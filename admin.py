@@ -5,6 +5,7 @@ Telegram-админ-панель управления контентом гай�
 Реализовано через мастер-диалог (aiogram FSM).
 """
 
+import json
 import logging
 import os
 
@@ -12,13 +13,16 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import is_admin
-from guides import load_guides, save_guides
+from guides import load_guides, save_guides, GUIDES_FILE
 from keyboards import main_menu_keyboard
-from states import AddGuideStates, AddCategoryStates, EditGuideStates
+from states import AddGuideStates, AddCategoryStates, EditGuideStates, ImportStates
+from users import count_users
+
+ANALYTICS_FILE = os.path.join(os.path.dirname(__file__), "logs", "analytics.log")
 
 router = Router()
 logger = logging.getLogger("admin")
@@ -54,7 +58,19 @@ def admin_menu_keyboard():
     b.button(text="📂 Категории и гайды", callback_data="admin:list")
     b.button(text="✏️ Управление гайдами", callback_data="admin:manage")
     b.button(text="🗑️ Удалить категорию", callback_data="admin:del_cat")
+    b.button(text="📦 Экспорт/импорт", callback_data="admin:transfer")
+    b.button(text="📊 Статистика", callback_data="admin:stats")
     b.button(text="🏠 Выход в меню", callback_data="menu")
+    b.adjust(1)
+    return b.as_markup()
+
+
+def transfer_keyboard():
+    """Кнопки экспорта/импорта контента."""
+    b = InlineKeyboardBuilder()
+    b.button(text="⬇️ Экспорт (бэкап)", callback_data="admin:export")
+    b.button(text="⬆️ Импорт", callback_data="admin:import")
+    b.button(text="◀️ Назад", callback_data="admin:back_menu")
     b.adjust(1)
     return b.as_markup()
 
@@ -647,6 +663,166 @@ async def delete_category_done(callback: CallbackQuery):
             "❌ Категория не найдена.",
             reply_markup=admin_menu_keyboard(),
         )
+    await callback.answer()
+
+
+# ---------- Экспорт / импорт контента ----------
+@router.callback_query(F.data == "admin:transfer")
+async def transfer_menu(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    await safe_edit(
+        callback.message,
+        "📦 <b>Экспорт / импорт контента</b>\n\n"
+        "Экспорт создаёт резервную копию всех гайдов в файл.\n"
+        "Импорт загружает гайды из файла (заменяет текущий контент).",
+        reply_markup=transfer_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin:export")
+async def export_guides(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    try:
+        with open(GUIDES_FILE, "rb") as f:
+            data = f.read()
+        file = BufferedInputFile(data, filename="guides_backup.json")
+        await callback.message.answer_document(
+            file,
+            caption="📦 <b>Резервная копия контента</b>",
+        )
+        logger.info("Админ %s экспортировал контент", callback.from_user.id)
+    except FileNotFoundError:
+        await callback.message.answer("❌ Файл контента не найден.")
+    except Exception as e:
+        await callback.message.answer(f"❌ Ошибка экспорта: {e}")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin:import")
+async def import_start(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    await state.set_state(ImportStates.wait_file)
+    await safe_edit(
+        callback.message,
+        "⬆️ Отправьте файл <b>JSON</b> (backup) с контентом для импорта.\n\n"
+        "<i>Внимание: текущий контент будет заменён.</i>",
+    )
+    await callback.answer()
+
+
+@router.message(ImportStates.wait_file, F.document)
+async def import_file(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        await message.answer("⛔ Нет доступа.")
+        return
+
+    # Скачиваем файл и пробуем распарсить
+    try:
+        file = await message.bot.get_file(message.document.file_id)
+        bytes_data = await message.bot.download_file(file.file_path)
+        content = bytes_data.read()
+        guides = json.loads(content.decode("utf-8"))
+    except Exception as e:
+        await message.answer(
+            f"❌ Не удалось прочитать файл. Убедитесь, что это корректный JSON.\n\n{e}"
+        )
+        await state.clear()
+        return
+
+    # Валидация структуры
+    if not isinstance(guides, dict):
+        await message.answer("❌ Неверная структура: ожидается JSON-объект (словарь).")
+        await state.clear()
+        return
+
+    save_guides(guides)
+    total = sum(len(cat.get("guide", [])) for cat in guides.values())
+    logger.info(
+        "Админ %s импортировал контент: %s категорий, %s гайдов",
+        message.from_user.id, len(guides), total,
+    )
+    await message.answer(
+        f"✅ <b>Контент импортирован!</b>\n\n"
+        f"📂 Категорий: <b>{len(guides)}</b>\n"
+        f"📄 Гайдов: <b>{total}</b>",
+        reply_markup=admin_menu_keyboard(),
+    )
+    await state.clear()
+
+
+# ---------- Статистика (Dashboard) ----------
+def _parse_analytics():
+    """Парсит analytics.log и возвращает счётчики."""
+    stats = {"start": 0, "category": {}, "guide": {}}
+    if not os.path.exists(ANALYTICS_FILE):
+        return stats
+    try:
+        with open(ANALYTICS_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if "| START" in line:
+                    stats["start"] += 1
+                elif "| CATEGORY" in line:
+                    parts = line.split("|")
+                    for p in parts:
+                        p = p.strip()
+                        if p.startswith("category="):
+                            cid = p.split("=", 1)[1]
+                            stats["category"][cid] = stats["category"].get(cid, 0) + 1
+                elif "| GUIDE" in line:
+                    parts = line.split("|")
+                    title = None
+                    for p in parts:
+                        p = p.strip()
+                        if p.startswith("category="):
+                            cid = p.split("=", 1)[1]
+                            key = cid
+                            stats["guide"][key] = stats["guide"].get(key, 0) + 1
+    except Exception:
+        pass
+    return stats
+
+
+@router.callback_query(F.data == "admin:stats")
+async def show_stats(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    stats = _parse_analytics()
+
+    text = "📊 <b>Статистика бота</b>\n\n"
+
+    # Общие цифры
+    text += f"👥 Пользователей (когда-либо запускали): <b>{count_users()}</b>\n"
+    text += f"🚀 Запусков бота (/start): <b>{stats['start']}</b>\n\n"
+
+    # Просмотры категорий
+    if stats["category"]:
+        text += "📂 <b>Просмотры категорий:</b>\n"
+        for cid, cnt in sorted(stats["category"].items(), key=lambda x: -x[1]):
+            text += f"   ▫️ <code>{cid}</code> — {cnt}\n"
+        text += "\n"
+
+    # Просмотры гайдов по категориям
+    if stats["guide"]:
+        text += "📄 <b>Просмотры гайдов (по категориям):</b>\n"
+        for cid, cnt in sorted(stats["guide"].items(), key=lambda x: -x[1]):
+            text += f"   ▫️ <code>{cid}</code> — {cnt}\n"
+
+    if not stats["category"] and not stats["guide"] and stats["start"] == 0:
+        text += "Пока нет данных. Как только пользователи начнут пользоваться ботом, здесь появится сводка."
+
+    text += "\n\n📝 Аналитика хранится в <code>logs/analytics.log</code>"
+
+    await safe_edit(callback.message, text, reply_markup=admin_menu_keyboard())
     await callback.answer()
 
 

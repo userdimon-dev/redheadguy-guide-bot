@@ -16,9 +16,10 @@ from aiogram.types import Message, CallbackQuery, FSInputFile, ErrorEvent
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from config import BOT_TOKEN, BOT_VERSION, BOT_NAME
+from config import BOT_TOKEN, BOT_VERSION, BOT_NAME, ADMIN_ID
 from guides import load_guides
 from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
+from users import register_user, count_users
 import admin
 import logger as logger_setup  # настраивает логирование (консоль + файл)
 
@@ -62,7 +63,25 @@ WELCOME_TEXT = (
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
     u = message.from_user
+    is_new = register_user(u.id)
     analytics.info("START | user_id=%s | username=%s", u.id, u.username or "-")
+
+    # Уведомление админу о новом пользователе
+    if is_new:
+        total = count_users()
+        for admin_id in ADMIN_ID:
+            try:
+                await message.bot.send_message(
+                    admin_id,
+                    f"🎉 <b>Новый пользователь!</b>\n\n"
+                    f"👤 <b>{u.full_name or u.username or u.id}</b>\n"
+                    f"🆔 ID: <code>{u.id}</code>\n"
+                    f"📛 @{u.username or '-'}\n\n"
+                    f"👥 Всего пользователей: <b>{total}</b>",
+                )
+            except Exception as e:
+                logger.warning("Не удалось уведомить админа %s о новом юзере: %s", admin_id, e)
+
     await message.answer(
         WELCOME_TEXT,
         reply_markup=main_menu_keyboard(),

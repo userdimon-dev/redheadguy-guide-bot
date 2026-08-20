@@ -27,3 +27,8 @@ class AddCategoryStates(StatesGroup):
 class EditGuideStates(StatesGroup):
     run = State()               # выполняем шаги мастера (шаг хранится в state)
 
+
+# Импорт контента (ожидаем файл JSON от админа)
+class ImportStates(StatesGroup):
+    wait_file = State()         # ожидание файла
+
