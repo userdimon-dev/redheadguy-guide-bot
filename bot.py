@@ -1,4 +1,3 @@
-
 """
 Telegram-бот RedheadGuy — гайды по настройкам и сервисам.
 Работает на aiogram 3.
@@ -22,7 +21,8 @@ from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
 logging.basicConfig(level=logging.INFO)
 
 # ---------- Инициализация ----------
-bot = Bot(token=BOT_TOKEN)
+# parse_mode=HTML включает рендеринг HTML-разметки (<b>, <a> и т.д.) для всех сообщений
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
 WELCOME_TEXT = (
@@ -109,3 +109,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
