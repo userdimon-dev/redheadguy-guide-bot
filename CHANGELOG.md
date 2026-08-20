@@ -5,6 +5,16 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
 проект придерживается [Semantic Versioning](https://semver.org/lang/ru/).
 
+## [1.3.0] - 2026-08-20
+
+### Добавлено
+- Веб-редактор контента на FastAPI (`web/`)
+- Авторизация через Telegram Login Widget
+- Rich text редактор TinyMCE (self-hosted)
+- Drag-and-drop сортировка категорий и гайдов
+- Живое превью гайда
+- Счётчики на главной странице панели
+- Отдельный контейнер `web` в docker-compose
 ## [1.2.0] - 2026-08-20
 
 ### Добавлено
@@ -32,5 +42,4 @@
 - Поддержка картинок-инструкций
 - Команды `/version` и `/about`
 - Деплой через Docker Compose
-
 

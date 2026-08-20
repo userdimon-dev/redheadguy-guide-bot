@@ -1,0 +1,32 @@
+# Никогда не копируем .env в образ
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# IDE / ОС
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Медиа и логи (монтируются как volume)
+media/
+logs/
+data/users.json
+data/backups/
+
+# Git
+.git
+.gitignore
+
+# Локальная документация и прочее (исключаем из контекста сборки)
+*.tgz
+*.tar

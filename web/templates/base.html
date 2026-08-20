@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/js/tinymce/tinymce.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar__inner">
+            <span class="topbar__logo">📚 {{ site_name }}</span>
+            <nav class="topbar__nav">
+                {% if session_user %}
+                    <a href="/" class="topbar__link">Главная</a>
+                    <a href="/logout" class="topbar__link topbar__link--logout">Выйти 👤{{ session_user }}</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>{{ site_name }} — панель управления гайдами</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

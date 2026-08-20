@@ -13,4 +13,23 @@ services:
       - ./logs:/app/logs
       # Файл контента (гайды) — чтобы правки через админку сохранялись
       - ./data/guides.json:/app/data/guides.json
+      - ./data/users.json:/app/data/users.json
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: redheadguy-guide-web
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Общий файл контента с ботом
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      # Позволяем переменным окружения переопределить имя сайта при необходимости
+      - WEB_SITE_NAME=${WEB_SITE_NAME:-RedheadGuy Admin}
 

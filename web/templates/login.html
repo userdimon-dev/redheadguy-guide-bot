@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Вход — {{ site_name }}{% endblock %}
+
+{% block head %}
+<script async src="https://telegram.org/js/telegram-widget.js?22"></script>
+{% endblock %}
+
+{% block content %}
+<div class="login-card">
+    <h1>🔐 {{ site_name }}</h1>
+    <p>Панель управления гайдами RedheadGuy.</p>
+    <p class="login-card__desc">
+        Войдите через Telegram. Доступ получают только администраторы
+        (Telegram ID указан в <code>.env</code> → <code>ADMIN_ID</code>).
+    </p>
+
+    <div class="login-card__widget">
+        <!-- Telegram Login Widget -->
+        <script async
+            src="https://telegram.org/js/telegram-widget.js?22"
+            data-telegram-login="{{ bot_username }}"
+            data-size="large"
+            data-radius="8"
+            data-userpic="false"
+            data-auth-url="/auth">
+        </script>
+    </div>
+
+    {% if request.query_params.get('error') == 'auth_fail' %}
+        <p class="login-card__error">❌ Не удалось авторизоваться. Возможно, ваш Telegram ID не указан в ADMIN_ID.</p>
+    {% endif %}
+
+    <p class="login-card__hint">
+        💡 Если вход не работает — проверьте, что в @BotFather → Bot Settings → Domain
+        указан адрес, на котором размещён этот сайт.
+    </p>
+</div>
+{% endblock %}

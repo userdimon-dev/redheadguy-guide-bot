@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Главная — {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <h1>📂 Категории</h1>
+</div>
+
+<!-- Счётчики -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-card__num">{{ stats.categories }}</span>
+        <span class="stat-card__label">Категорий</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-card__num">{{ stats.guides }}</span>
+        <span class="stat-card__label">Гайдов</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-card__num">{{ stats.users }}</span>
+        <span class="stat-card__label">Пользователей</span>
+    </div>
+</div>
+
+<!-- Добавить категорию -->
+<form method="post" action="/category/add" class="inline-form">
+    <input type="text" name="category_id" placeholder="id (латиницей, напр. obhod)" required>
+    <input type="text" name="title" placeholder="Название (с эмодзи)" required>
+    <button type="submit" class="btn btn--primary">➕ Добавить</button>
+</form>
+
+<!-- Список категорий (сортировка drag-and-drop) -->
+<ul id="category-sort" class="card-list">
+    {% for category_id, category in guides.items() %}
+    <li class="card-list__item" data-id="{{ category_id }}">
+        <span class="drag-handle">⠿</span>
+        <a href="/category/{{ category_id }}" class="category-name">
+            {{ category.title }}
+            <span class="badge">{{ category.guide|length }}</span>
+        </a>
+        <form method="post" action="/category/{{ category_id }}/delete" class="inline-form inline-form--right"
+              onsubmit="return confirm('Удалить категорию и все её гайды?');">
+            <button type="submit" class="btn btn--danger">🗑️</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+
+{% if not guides %}
+    <p class="empty">Категорий пока нет. Добавьте первую 👆</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/sortable.min.js"></script>
+<script>
+    // Сортировка категорий
+    const catList = document.getElementById('category-sort');
+    if (catList) {
+        new Sortable(catList, {
+            handle: '.drag-handle',
+            animation: 150,
+            onEnd: function(evt) {
+                const order = Array.from(catList.children).map(
+                    li => li.getAttribute('data-id')
+                );
+                fetch('/reorder_categories', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({order: order})
+                });
+            }
+        });
+    }
+</script>
+{% endblock %}

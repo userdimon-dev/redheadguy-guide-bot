@@ -1,6 +1,6 @@
 # 🤖 RedheadGuy Guide Bot
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-3.x-0d8b9b?style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -22,6 +22,11 @@
 - 🖼️ Поддержка картинок-инструкций (скриншотов)
 - 📂 Контент в **JSON** — редактируется через админку, отдельно от кода
 - 🔐 **Telegram-админ-панель** — добавление, редактирование и удаление гайдов и категорий
+- 🌐 **Веб-редактор (FastAPI)** — полноценная панель управления через браузер:
+  - 🔑 вход через Telegram Login Widget,
+  - ✍️ rich text редактор (TinyMCE),
+  - 🖱️ drag-and-drop сортировка категорий и гайдов,
+  - 👁️ живое превью гайда, 📊 счётчики и поиск
 - 📊 **Аналитика** действий пользователей (какие гайды смотрят)
 - 📊 **Dashboard статистики** прямо в админке
 - 🔔 **Уведомления** админу о новых пользователях
@@ -68,6 +73,9 @@ docker compose logs -f bot
 > ⚠️ Контент гайдов хранится в `data/guides.json` и монтируется как volume —
 > правки через админку сохраняются даже после пересборки контейнера.
 
+> 🚀 После `docker compose up -d --build` запустятся **и бот, и веб-редактор**.
+> Веб-редактор будет доступен на `http://ваш-сервер:8000`.
+
 ### Вариант Б: Без Docker (для разработки)
 
 ```bash
@@ -106,6 +114,8 @@ python bot.py
 | `CABINET_URL` | ❌ | Ссылка на личный кабинет (кнопка «👤 Личный кабинет») |
 | `SUPPORT_URL` | ❌ | Ссылка на поддержку (кнопка «💬 Поддержка») |
 | `SITE_URL` | ❌ | Ссылка на официальный сайт (кнопка «🌐 Сайт») |
+| `BOT_USERNAME` | ✅* | Имя пользователя бота (без `@`) — для кнопки «Войти через Telegram» в веб-редакторе. Нужно для работы веб-панели. |
+| `WEB_SITE_NAME` | ❌ | Название сайта в шапке веб-редактора. По умолчанию `RedheadGuy Admin`. |
 
 > Дополнительные ссылки (`CHANNEL_URL`, `CABINET_URL` и т.д.) показываются как кнопки в конце
 > гайда, если гайд при создании помечен опцией «показывать ссылки». Если переменная пустая —
@@ -126,6 +136,10 @@ CHANNEL_URL=https://t.me/your_channel
 CABINET_URL=https://cabinet.example.com
 SUPPORT_URL=https://t.me/your_support
 SITE_URL=https://example.com
+
+# Веб-редактор (FastAPI)
+BOT_USERNAME=your_bot_username   # без @
+# WEB_SITE_NAME=RedheadGuy Admin
 ```
 
 ---
@@ -147,6 +161,56 @@ SITE_URL=https://example.com
 - 📦 Экспорт/импорт контента (бэкап в файл, восстановление, перенос между ботами)
 - 📊 Статистика (пользователи, запуски, просмотры категорий и гайдов)
 - 🔔 Автоматические уведомления о новых пользователях
+
+---
+
+## 🌐 Веб-редактор (FastAPI)
+
+Полноценная панель управления гайдами через браузер. Работает в отдельном
+контейнере вместе с ботом и использует тот же файл `data/guides.json`.
+
+**Возможности:**
+- 🔑 вход через **Telegram Login Widget** (доступ только для `ADMIN_ID`)
+- 📂 создание / переименование / удаление категорий
+- ✍️ **rich text редактор (TinyMCE)** для текста гайда
+- 👁️ живое **превью** гайда при редактировании
+- 🖱️ **drag-and-drop** сортировка категорий и гайдов
+- 🔗 настройка ссылки, подписи кнопки и `show_bot_links`
+- 📊 счётчики (категорий, гайдов, пользователей)
+
+### Настройка доступа
+
+1. В [@BotFather](https://t.me/BotFather) → Bot Settings → **Domain**
+   укажите адрес, по которому доступен веб-редактор (например `redheadguide.redheadguy.ru`).
+2. В `.env` укажите `BOT_USERNAME` (имя бота без `@`) и ваш `ADMIN_ID`.
+3. Веб-редактор запускается автоматически при `docker compose up`.
+
+### Деплой за обратным прокси (Nginx + HTTPS)
+
+Рекомендуется повесить на домен через Nginx с TLS:
+
+```nginx
+server {
+    server_name redheadguide.redheadguy.ru;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+> Порт `8000` в `docker-compose.yml` при необходимости можно поменять или
+> убрать публикацию наружу, оставив доступ только через Nginx.
+
+### Запуск веба без Docker
+
+```bash
+pip install -r web/requirements.txt
+python -m uvicorn web.main:app --host 0.0.0.0 --port 8000
+```
 
 ---
 
@@ -185,11 +249,20 @@ redheadguy-guide-bot/
 ├── data/guides.json     # контент гайдов
 ├── media/photos/        # загруженные картинки-инструкции
 ├── logs/                # файлы логов и аналитики
+├── web/                 # 🌐 веб-редактор (FastAPI)
+│   ├── main.py          # FastAPI приложение (роуты)
+│   ├── auth.py          # проверка подписи Telegram Login Widget
+│   ├── config.py        # настройки веба
+│   ├── storage.py       # работа с data/guides.json
+│   ├── templates/       # Jinja2 шаблоны
+│   ├── static/          # CSS + JS (TinyMCE, Sortable)
+│   └── requirements.txt # зависимости веба
 ├── VERSION              # номер версии бота
 ├── CHANGELOG.md         # история версий
-├── Dockerfile           # сборка образа
-├── docker-compose.yml   # оркестрация (Docker Compose)
-├── requirements.txt     # зависимости
+├── Dockerfile           # сборка образа бота
+├── Dockerfile.web       # сборка образа веб-редактора
+├── docker-compose.yml   # оркестрация (бот + web)
+├── requirements.txt     # зависимости бота
 ├── .env.example         # шаблон настроек
 └── README.md
 ```
@@ -199,6 +272,9 @@ redheadguy-guide-bot/
 ## 🏷️ Changelog
 
 Полный журнал версий — в [CHANGELOG.md](CHANGELOG.md).
+
+### v1.3.0 (2026-08-20)
+- 🌐 Веб-редактор на FastAPI (вход через Telegram, TinyMCE, drag-and-drop, превью)
 
 ### v1.2.0 (2026-08-20)
 - 🔍 Поиск по гайдам (по названию и тексту)

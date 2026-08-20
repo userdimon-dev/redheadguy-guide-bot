@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_new %}Новый гайд{% else %}Редактирование{% endif %} — {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <a href="/category/{{ category_id }}" class="back-link">← Назад к категории</a>
+    <h1>{% if is_new %}➕ Новый гайд{% else %}✏️ Редактирование гайда{% endif %}</h1>
+</div>
+
+<form method="post" action="/guide/{{ category_id }}/save" class="editor-form">
+    {% if not is_new %}
+        <input type="hidden" name="index" value="{{ index }}">
+    {% else %}
+        <input type="hidden" name="index" value="new">
+    {% endif %}
+
+    <div class="form-group">
+        <label for="title">Заголовок</label>
+        <input type="text" id="title" name="title" value="{{ guide.get('title','') }}"
+               placeholder="🖥️ Как подключиться на Windows" required>
+    </div>
+
+    <div class="form-group">
+        <label for="text">Текст гайда (HTML)</label>
+        <textarea id="text" name="text" rows="12">{{ guide.get('text','') }}</textarea>
+    </div>
+
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="url">Ссылка (URL) — необязательно</label>
+            <input type="text" id="url" name="url" value="{{ guide.get('url','') }}"
+                   placeholder="https://example.com">
+        </div>
+        <div class="form-group">
+            <label for="url_label">Подпись кнопки</label>
+            <input type="text" id="url_label" name="url_label" value="{{ guide.get('url_label','') }}"
+                   placeholder="🔗 Открыть">
+        </div>
+    </div>
+
+    <div class="form-group form-group--check">
+        <label>
+            <input type="checkbox" name="show_bot_links" {% if guide.get('show_bot_links') %}checked{% endif %}>
+            Показывать кнопки основного бота и дополнительных ссылок
+        </label>
+    </div>
+
+    <div class="editor-actions">
+        <button type="submit" class="btn btn--primary">💾 Сохранить</button>
+        <a href="/category/{{ category_id }}" class="btn">Отмена</a>
+    </div>
+</form>
+
+<!-- Превью гайда -->
+<div class="preview-panel">
+    <div class="preview-panel__head">👁️ Превью</div>
+    <div id="preview" class="preview-panel__body"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/sortable.min.js"></script>
+<script>
+    // Инициализация TinyMCE (rich text редактор)
+    tinymce.init({
+        selector: '#text',
+        height: 400,
+        menubar: false,
+        plugins: 'lists link image code charmap table preview',
+        toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | link | code',
+        setup: function(editor) {
+            editor.on('input change', function() {
+                updatePreview();
+            });
+        }
+    });
+
+    // Живое превью
+    const titleInput = document.getElementById('title');
+    const preview = document.getElementById('preview');
+    function updatePreview() {
+        const title = titleInput.value || 'Название гайда';
+        const text = tinymce.get('text') ? tinymce.get('text').getContent() : '';
+        preview.innerHTML = '<h2>' + escapeHtml(title) + '</h2>' + text;
+    }
+    titleInput.addEventListener('input', updatePreview);
+    updatePreview();
+
+    // Превью рендерит HTML — экранируем только заголовок
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+</script>
+{% endblock %}
