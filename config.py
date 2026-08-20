@@ -9,6 +9,22 @@ from dotenv import load_dotenv
 # Загружаем переменные из .env
 load_dotenv()
 
+# ---------- Версия бота ----------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VERSION_FILE = os.path.join(BASE_DIR, "VERSION")
+
+
+def get_version() -> str:
+    """Возвращает текущую версию бота из файла VERSION."""
+    try:
+        with open(VERSION_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return "unknown"
+
+BOT_VERSION = get_version()
+BOT_NAME = "RedHeadGuy Guide Bot"
+
 # ---------- Токен бота (обязательно) ----------
 BOT_TOKEN = os.getenv("BOT_TOKEN", "PASTE_YOUR_BOT_TOKEN_HERE")
 
@@ -48,3 +64,4 @@ def get_extra_links() -> list[tuple[str, str]]:
     if SITE_URL:
         links.append(("🌐 Сайт", SITE_URL))
     return links
+

@@ -16,7 +16,7 @@ from aiogram.types import Message, CallbackQuery, FSInputFile, ErrorEvent
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, BOT_VERSION, BOT_NAME
 from guides import load_guides
 from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
 import admin
@@ -66,6 +66,31 @@ async def cmd_start(message: Message):
     await message.answer(
         WELCOME_TEXT,
         reply_markup=main_menu_keyboard(),
+    )
+
+
+# ---------- Команда /version ----------
+@dp.message(F.text == "/version" or F.text.startswith("/version"))
+async def cmd_version(message: Message):
+    await message.answer(
+        f"🤖 <b>{BOT_NAME}</b>\n"
+        f"Версия: <b>v{BOT_VERSION}</b>\n\n"
+        f"🆕 Проверяйте обновления у @redheadguy_bot"
+    )
+
+
+# ---------- Команда /about ----------
+@dp.message(F.text == "/about" or F.text.startswith("/about"))
+async def cmd_about(message: Message):
+    await message.answer(
+        f"ℹ️ <b>{BOT_NAME} v{BOT_VERSION}</b>\n\n"
+        "Здесь собраны пошаговые гайды по настройке приложений "
+        "и сервисов RedheadGuy.\n\n"
+        "Выберите нужный раздел в главном меню 👇\n\n"
+        "⚙️ <b>Команды:</b>\n"
+        "/start — главное меню\n"
+        "/about — информация о боте\n"
+        "/version — версия бота"
     )
 
 
@@ -163,7 +188,7 @@ async def error_handler(event: ErrorEvent):
 
 async def main():
     try:
-        logger.info("Бот запущен. Ожидание сообщений...")
+        logger.info("%s v%s запущен. Ожидание сообщений...", BOT_NAME, BOT_VERSION)
         await dp.start_polling(bot)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Бот остановлен пользователем.")
