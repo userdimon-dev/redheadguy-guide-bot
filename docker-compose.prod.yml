@@ -1,0 +1,14 @@
+# Прод-версия через Docker Compose
+# Использование: docker compose -f docker-compose.prod.yml up -d
+services:
+  bot:
+    build: .
+    container_name: redheadguy-guide-bot
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./media:/app/media
+      # Контент (гайды) монтируем, чтобы не пересобирать образ при правках
+      - ./guides.py:/app/guides.py:ro
+      - ./config.py:/app/config.py:ro

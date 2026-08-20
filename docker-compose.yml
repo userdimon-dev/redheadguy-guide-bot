@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    container_name: redheadguy-guide-bot
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      # Монтируем контент/медиа, чтобы изменения не требовали пересборки
+      - ./media:/app/media
