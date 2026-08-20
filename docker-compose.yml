@@ -1,4 +1,5 @@
-﻿  bot:
+﻿services:
+  bot:
     build: .
     container_name: redheadguy-guide-bot
     restart: always
