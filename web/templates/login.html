@@ -16,16 +16,46 @@
     </p>
 
     <div class="login-card__widget">
-        <!-- Telegram Login Widget -->
+        <!-- Telegram Login Widget (data-onauth — надёжно работает за прокси/Nginx) -->
         <script async
             src="https://telegram.org/js/telegram-widget.js?22"
             data-telegram-login="{{ bot_username }}"
             data-size="large"
             data-radius="8"
             data-userpic="false"
-            data-auth-url="/auth">
+            data-onauth="onTelegramAuth"
+            data-request-access="write">
         </script>
     </div>
+
+    <script>
+        // Получаем объект авторизации от виджета и отправляем на наш бэкенд
+        async function onTelegramAuth(user) {
+            const form = new URLSearchParams();
+            form.set('id', user.id);
+            form.set('first_name', user.first_name || '');
+            form.set('last_name', user.last_name || '');
+            form.set('username', user.username || '');
+            form.set('photo_url', user.photo_url || '');
+            form.set('auth_date', user.auth_date);
+            form.set('hash', user.hash);
+
+            try {
+                const res = await fetch('/auth', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: form.toString()
+                });
+                if (res.redirected) {
+                    window.location.href = res.url;
+                } else {
+                    window.location.href = '/';
+                }
+            } catch (e) {
+                window.location.href = '/login?error=auth_fail';
+            }
+        }
+    </script>
 
     {% if request.query_params.get('error') == 'auth_fail' %}
         <p class="login-card__error">❌ Не удалось авторизоваться. Возможно, ваш Telegram ID не указан в ADMIN_ID.</p>
@@ -37,3 +67,4 @@
     </p>
 </div>
 {% endblock %}
+

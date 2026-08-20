@@ -35,7 +35,7 @@ _active_sessions: dict[str, int] = {}  # token -> telegram_id
 def _set_session_cookie(response: Response, telegram_id: int) -> None:
     token = secrets.token_urlsafe(32)
     _active_sessions[token] = telegram_id
-    response.set_cookie("session", token, max_age=60 * 60 * 24)
+    response.set_cookie("session", token, max_age=60 * 60 * 24, httponly=True)
 
 
 def _get_session_user(request: Request) -> int | None:
@@ -66,18 +66,37 @@ async def login_page(request: Request):
     )
 
 
-@app.post("/auth")
+@app.api_route("/auth", methods=["GET", "POST"], name="auth")
 async def auth_login(response: Response, request: Request):
-    """Приём данных от Telegram Login Widget (GET или POST query)."""
+    """
+    Приём данных от Telegram Login Widget.
+
+    Виджет может отправить данные двумя способами:
+    - GET  — параметры в query-string  (?id=...&hash=...&auth_date=...)
+    - POST — параметры в теле формы (x-www-form-urlencoded)
+
+    Читаем и объединяем оба источника.
+    """
     params = dict(request.query_params)
+    if request.method == "POST":
+        try:
+            form = await request.form()
+            for key, value in form.items():
+                params[key] = str(value)
+        except Exception:
+            pass
+
     if not verify_telegram_auth(params):
         return RedirectResponse(url="/login?error=auth_fail", status_code=303)
     try:
         telegram_id = int(params["id"])
     except (KeyError, ValueError):
         return RedirectResponse(url="/login?error=auth_fail", status_code=303)
-    _set_session_cookie(response, telegram_id)
-    return RedirectResponse(url="/", status_code=303)
+    # Устанавливаем cookie на самом возвращаемом response (303 redirect),
+    # чтобы Set-Cookie точно дошёл до браузера.
+    redirect = RedirectResponse(url="/", status_code=303)
+    _set_session_cookie(redirect, telegram_id)
+    return redirect
 
 
 @app.get("/logout")
