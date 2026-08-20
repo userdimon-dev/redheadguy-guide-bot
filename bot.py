@@ -12,7 +12,9 @@ import logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery, FSInputFile, ErrorEvent
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message, CallbackQuery, FSInputFile, ErrorEvent, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
@@ -20,6 +22,7 @@ from config import BOT_TOKEN, BOT_VERSION, BOT_NAME, ADMIN_ID
 from guides import load_guides
 from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
 from users import register_user, count_users
+from states import SearchStates
 import admin
 import logger as logger_setup  # настраивает логирование (консоль + файл)
 
@@ -187,6 +190,75 @@ async def show_guide(callback: CallbackQuery):
             reply_markup=keyboard,
         )
     await callback.answer()
+
+
+# ---------- Поиск по гайдам ----------
+def _search_guides(query: str, limit: int = 15) -> list:
+    """Ищет гайды по запросу (по заголовку и тексту). Возвращает список (cat, idx, guide)."""
+    q = query.lower().strip()
+    if not q:
+        return []
+    guides = load_guides()
+    results = []
+    for cat_id, cat in guides.items():
+        for idx, guide in enumerate(cat.get("guide", [])):
+            title = (guide.get("title") or "").lower()
+            text = (guide.get("text") or "").lower()
+            if q in title or q in text:
+                results.append((cat_id, idx, guide))
+                if len(results) >= limit:
+                    return results
+    return results
+
+
+def search_results_keyboard(results: list) -> InlineKeyboardMarkup:
+    """Клавиатура с найденными гайдами + кнопка «В меню»."""
+    builder = InlineKeyboardBuilder()
+    for cat_id, idx, guide in results:
+        builder.button(
+            text=guide.get("title", "Гайд"),
+            callback_data=f"guide:{cat_id}:{idx}",
+        )
+    builder.button(text="🏠 В меню", callback_data="menu")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+@dp.callback_query(F.data == "search")
+async def search_start(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SearchStates.query)
+    await safe_edit(
+        callback.message,
+        "🔍 <b>Поиск по гайдам</b>\n\n"
+        "Введите ключевое слово или фразу для поиска "
+        "(например «Windows», «установка»):",
+    )
+    await callback.answer()
+
+
+@dp.message(SearchStates.query)
+async def search_process(message: Message, state: FSMContext):
+    await state.clear()
+    query = message.text.strip()
+
+    # Пустой запрос или отмена/start — возвращаем в меню
+    if not query or query.lower() in ("/cancel", "/start", "menu"):
+        await message.answer(WELCOME_TEXT, reply_markup=main_menu_keyboard())
+        return
+
+    results = _search_guides(query)
+
+    if not results:
+        await message.answer(
+            f"🔍 По запросу <b>«{query}»</b> ничего не найдено.\n\n"
+            "Попробуйте другое ключевое слово.",
+            reply_markup=main_menu_keyboard(),
+        )
+        return
+
+    text = f"🔍 Результаты по запросу <b>«{query}»</b> — <b>{len(results)}</b>:\n\n"
+    builder = search_results_keyboard(results)
+    await message.answer(text, reply_markup=builder)
 
 
 # ---------- Запуск ----------

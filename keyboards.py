@@ -1,4 +1,3 @@
-
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -8,7 +7,7 @@ from guides import load_guides
 
 # ---------- Кнопки главного меню (категории) ----------
 def main_menu_keyboard() -> InlineKeyboardMarkup:
-    """Главное меню со списком категорий гайдов."""
+    """Главное меню со списком категорий гайдов + кнопка поиска."""
     guides = load_guides()
 
     builder = InlineKeyboardBuilder()
@@ -17,6 +16,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
             text=category["title"],
             callback_data=f"cat:{category_id}",
         )
+    builder.button(text="🔍 Поиск", callback_data="search")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -70,3 +70,4 @@ def guide_keyboard(category_id: str, index: int, guide: dict) -> InlineKeyboardM
     builder.button(text="🏠 В меню", callback_data="menu")
     builder.adjust(1)
     return builder.as_markup()
+

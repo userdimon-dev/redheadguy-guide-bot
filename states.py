@@ -32,3 +32,8 @@ class EditGuideStates(StatesGroup):
 class ImportStates(StatesGroup):
     wait_file = State()         # ожидание файла
 
+
+# Поиск по гайдам
+class SearchStates(StatesGroup):
+    query = State()             # ожидание поискового запроса
+

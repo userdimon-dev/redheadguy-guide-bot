@@ -1,6 +1,6 @@
 # 🤖 RedheadGuy Guide Bot
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-3.x-0d8b9b?style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -17,6 +17,7 @@
 
 - 📱 Пошаговые гайды по настройке приложений и сервисов
 - 🖥️ Инструкции для разных устройств (Windows, Android, iOS, Linux)
+- 🔍 Поиск по гайдам (по названию и тексту)
 - 🔗 Кнопки с полезными ссылками (основной бот, канал, кабинет, сайт, поддержка)
 - 🖼️ Поддержка картинок-инструкций (скриншотов)
 - 📂 Контент в **JSON** — редактируется через админку, отдельно от кода
@@ -198,6 +199,9 @@ redheadguy-guide-bot/
 ## 🏷️ Changelog
 
 Полный журнал версий — в [CHANGELOG.md](CHANGELOG.md).
+
+### v1.2.0 (2026-08-20)
+- 🔍 Поиск по гайдам (по названию и тексту)
 
 ### v1.1.0 (2026-08-20)
 - 📦 Экспорт/импорт контента (бэкапы, перенос между ботами)
