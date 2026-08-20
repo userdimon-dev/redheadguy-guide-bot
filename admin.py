@@ -33,7 +33,10 @@ def safe_edit(message, text, **kwargs):
     try:
         return message.edit_text(text, **kwargs)
     except TelegramBadRequest as e:
-        if "message is not modified" in str(e).lower():
+        # Проверяем и по тексту исключения, и по атрибуту .message
+        err = f"{e} {getattr(e, 'message', '')}".lower()
+        if "not modified" in err:
+            logger.debug("Игнорируем 'message is not modified'")
             return  # контент уже тот же — пропускаем
         raise
 
