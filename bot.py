@@ -19,7 +19,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from config import BOT_TOKEN, BOT_VERSION, BOT_NAME, ADMIN_ID
-from guides import load_guides
+from guides import load_guides, clean_html_for_telegram
 from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
 from users import register_user, count_users
 from states import SearchStates
@@ -172,7 +172,8 @@ async def show_guide(callback: CallbackQuery):
     )
 
     keyboard = guide_keyboard(category_id, index, guide)
-    text = f"<b>{guide['title']}</b>\n\n{guide['text']}"
+    content = clean_html_for_telegram(guide.get("text") or "")
+    text = f"<b>{guide['title']}</b>\n\n{content}"
 
     # Если есть картинка — отправляем с фото
     if guide.get("photo"):
