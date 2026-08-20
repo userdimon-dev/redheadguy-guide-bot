@@ -1,5 +1,7 @@
 # Прод-версия через Docker Compose
 # Использование: docker compose -f docker-compose.prod.yml up -d
+version: "3.8"
+
 services:
   bot:
     build: .
@@ -9,6 +11,9 @@ services:
       - .env
     volumes:
       - ./media:/app/media
+      - ./logs:/app/logs
+      - ./data/guides.json:/app/data/guides.json
       # Контент (гайды) монтируем, чтобы не пересобирать образ при правках
       - ./guides.py:/app/guides.py:ro
       - ./config.py:/app/config.py:ro
+
