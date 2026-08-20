@@ -2,6 +2,8 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from config import MAIN_BOT_URL, get_extra_links
+
 
 # ---------- Кнопки главного меню (категории) ----------
 def main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -42,12 +44,26 @@ def guide_keyboard(category_id: str, index: int, guide: dict) -> InlineKeyboardM
 
     builder = InlineKeyboardBuilder()
 
+    # 1. Обычная ссылка гайда (если задана)
     if guide.get("url"):
         builder.button(
             text=guide.get("url_label", "🔗 Открыть"),
             url=guide["url"],
         )
 
+    # 2. Если гайд помечен show_bot_links — добавляем кнопку основного бота
+    #    и доп. ссылки (канал, кабинет и т.д.) из конфига (.env)
+    if guide.get("show_bot_links"):
+        # Кнопка на основной бот
+        builder.button(
+            text="🤖 Перейти в основной бот",
+            url=MAIN_BOT_URL,
+        )
+        # Дополнительные ссылки из .env (если заданы)
+        for label, url in get_extra_links():
+            builder.button(text=label, url=url)
+
+    # 3. Навигация
     builder.button(
         text="◀️ К списку",
         callback_data=f"cat:{category_id}",
