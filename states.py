@@ -20,3 +20,10 @@ class AddGuideStates(StatesGroup):
 class AddCategoryStates(StatesGroup):
     enter_id = State()          # ввод ID категории (латиницей)
     enter_title = State()       # ввод названия
+
+
+# Мастер редактирования существующего гайда
+# (похож на AddGuideStates, отражает те же шаги, но отдельно)
+class EditGuideStates(StatesGroup):
+    run = State()               # выполняем шаги мастера (шаг хранится в state)
+

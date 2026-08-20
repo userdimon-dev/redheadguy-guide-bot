@@ -18,7 +18,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import is_admin
 from guides import load_guides, save_guides
 from keyboards import main_menu_keyboard
-from states import AddGuideStates, AddCategoryStates
+from states import AddGuideStates, AddCategoryStates, EditGuideStates
 
 router = Router()
 logger = logging.getLogger("admin")
@@ -52,7 +52,40 @@ def admin_menu_keyboard():
     b.button(text="➕ Добавить категорию", callback_data="admin:add_category")
     b.button(text="➕ Добавить гайд", callback_data="admin:add_guide")
     b.button(text="📂 Категории и гайды", callback_data="admin:list")
+    b.button(text="✏️ Управление гайдами", callback_data="admin:manage")
     b.button(text="🏠 Выход в меню", callback_data="menu")
+    b.adjust(1)
+    return b.as_markup()
+
+
+def manage_categories_keyboard():
+    """Список категорий для управления гайдами."""
+    b = InlineKeyboardBuilder()
+    guides = load_guides()
+    for cid in guides.keys():
+        b.button(text=f"📂 {guides[cid]['title']}", callback_data=f"admin:mgmt_cat:{cid}")
+    b.button(text="◀️ Назад", callback_data="admin:back_menu")
+    b.adjust(1)
+    return b.as_markup()
+
+
+def manage_guides_keyboard(category_id: str):
+    """Список гайдов в выбранной категории для управления."""
+    b = InlineKeyboardBuilder()
+    guides = load_guides()
+    for idx, g in enumerate(guides[category_id]["guide"]):
+        b.button(text=f"{idx+1}. {g['title']}", callback_data=f"admin:mgmt_guide:{category_id}:{idx}")
+    b.button(text="◀️ Назад", callback_data="admin:manage")
+    b.adjust(1)
+    return b.as_markup()
+
+
+def manage_guide_actions(category_id: str, index: int):
+    """Кнопки действий с конкретным гайдом."""
+    b = InlineKeyboardBuilder()
+    b.button(text="✏️ Редактировать", callback_data=f"admin:edit:{category_id}:{index}")
+    b.button(text="🗑️ Удалить", callback_data=f"admin:del:{category_id}:{index}")
+    b.button(text="◀️ Назад", callback_data=f"admin:mgmt_cat:{category_id}")
     b.adjust(1)
     return b.as_markup()
 
@@ -325,6 +358,215 @@ async def guide_botlinks(callback: CallbackQuery, state: FSMContext):
         "✅ <b>Гайд добавлен!</b>",
         reply_markup=admin_menu_keyboard(),
     )
+    await callback.answer()
+
+
+# ---------- Управление гайдами: меню выбора категории ----------
+@router.callback_query(F.data == "admin:manage")
+async def manage_start(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    guides = load_guides()
+    if not guides:
+        await safe_edit(callback.message, "📂 Категорий пока нет.", reply_markup=admin_menu_keyboard())
+        return
+    await safe_edit(
+        callback.message,
+        "Выберите категорию для управления гайдами:",
+        reply_markup=manage_categories_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin:back_menu")
+async def manage_back_menu(callback: CallbackQuery):
+    await safe_edit(
+        callback.message,
+        "🔐 <b>Админ-панель RedheadGuy</b>\n\nУправление контентом гайдов:",
+        reply_markup=admin_menu_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:mgmt_cat:"))
+async def manage_category_chosen(callback: CallbackQuery):
+    cid = callback.data.split(":", 2)[2]
+    await safe_edit(
+        callback.message,
+        "Выберите гайд для редактирования/удаления:",
+        reply_markup=manage_guides_keyboard(cid),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:mgmt_guide:"))
+async def manage_guide_chosen(callback: CallbackQuery):
+    _, _, cid, idx_str = callback.data.split(":")
+    idx = int(idx_str)
+    guides = load_guides()
+    g = guides[cid]["guide"][idx]
+    await safe_edit(
+        callback.message,
+        f"🛠️ <b>{g['title']}</b>\n\nВыберите действие:",
+        reply_markup=manage_guide_actions(cid, idx),
+    )
+    await callback.answer()
+
+
+# ---------- Удаление гайда (с подтверждением) ----------
+@router.callback_query(F.data.startswith("admin:del:"))
+async def delete_guide_confirm(callback: CallbackQuery):
+    _, _, cid, idx_str = callback.data.split(":")
+    idx = int(idx_str)
+    guides = load_guides()
+    g = guides[cid]["guide"][idx]
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Да, удалить", callback_data=f"admin:del_yes:{cid}:{idx}")
+    kb.button(text="❌ Нет", callback_data=f"admin:mgmt_guide:{cid}:{idx}")
+    kb.adjust(2)
+    await safe_edit(
+        callback.message,
+        f"⚠️ Удалить гайд <b>«{g['title']}»</b>?",
+        reply_markup=kb.as_markup(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:del_yes:"))
+async def delete_guide_done(callback: CallbackQuery):
+    _, _, cid, idx_str = callback.data.split(":")
+    idx = int(idx_str)
+    guides = load_guides()
+    removed = guides[cid]["guide"].pop(idx)
+    save_guides(guides)
+    logger.info("Админ %s удалил гайд «%s»", callback.from_user.id, removed.get("title"))
+
+    await safe_edit(
+        callback.message,
+        f"🗑️ Гайд <b>«{removed.get('title')}»</b> удалён.",
+        reply_markup=admin_menu_keyboard(),
+    )
+    await callback.answer()
+
+
+# ---------- Редактирование гайда: начало мастера ----------
+@router.callback_query(F.data.startswith("admin:edit:"))
+async def edit_guide_start(callback: CallbackQuery, state: FSMContext):
+    _, _, cid, idx_str = callback.data.split(":")
+    idx = int(idx_str)
+    guides = load_guides()
+    g = guides[cid]["guide"][idx]
+
+    # Сохраняем контекст редактирования
+    await state.update_data(edit_category=cid, edit_index=idx)
+    await state.set_state(EditGuideStates.run)
+    # Шаг 1: заголовок
+    await state.update_data(edit_step="title", edit_title=g.get("title", ""))
+    await safe_edit(
+        callback.message,
+        "✏️ <b>Редактирование гайда</b>\n\n"
+        f"Текущий заголовок: <b>{g.get('title','')}</b>\n\n"
+        "Введите новый заголовок (или <code>/skip</code> — оставить без изменений):",
+    )
+    await callback.answer()
+
+
+@router.message(EditGuideStates.run)
+async def edit_guide_process(message: Message, state: FSMContext):
+    data = await state.get_data()
+    step = data.get("edit_step")
+    cid = data["edit_category"]
+    idx = data["edit_index"]
+    guides = load_guides()
+    g = guides[cid]["guide"][idx]
+
+    text = message.text.strip()
+    skip = text.lower() == "/skip"
+
+    if step == "title":
+        if not skip:
+            g["title"] = text
+        await state.update_data(edit_step="text")
+        await message.answer(
+            f"Текущий текст гайда:\n<pre>{g.get('text','')[:300]}</pre>\n\n"
+            "Введите новый текст (или <code>/skip</code>):"
+        )
+
+    elif step == "text":
+        if not skip:
+            g["text"] = text
+        await state.update_data(edit_step="url")
+        kb = InlineKeyboardBuilder()
+        kb.button(text="⏭️ Оставить ссылку как есть", callback_data="admin:edit_keep_url")
+        kb.button(text="✏️ Изменить ссылку", callback_data="admin:edit_change_url")
+        kb.button(text="🗑️ Убрать ссылку", callback_data="admin:edit_remove_url")
+        await message.answer(
+            "Ссылка сейчас: "
+            + (f"<code>{g.get('url','')}</code>" if g.get("url") else "<i>нет</i>")
+            + "\n\nЧто сделать со ссылкой?",
+            reply_markup=kb.as_markup(),
+        )
+
+    elif step == "new_url":
+        # Пользователь ввёл новую ссылку; запрашиваем подпись
+        if not skip:
+            g["url"] = text
+        await state.update_data(edit_step="url_label")
+        await message.answer("Введите <b>подпись</b> для ссылки (или <code>/skip</code>):")
+
+    elif step == "url_label":
+        if not skip:
+            g["url_label"] = text
+        await _finish_edit(message, state)
+
+    # На каждом шаге сохраняем текущее состояние гайда
+    save_guides(guides)
+
+
+async def _finish_edit(message, state: FSMContext):
+    data = await state.get_data()
+    cid = data["edit_category"]
+    guides = load_guides()
+    g = guides[cid]["guide"][data["edit_index"]]
+    logger.info(
+        "Админ %s отредактировал гайд «%s»",
+        message.from_user.id if hasattr(message, "from_user") else "?",
+        g.get("title", ""),
+    )
+    await state.clear()
+    await message.answer(
+        f"✅ Гайд <b>«{g.get('title','')}»</b> обновлён!",
+        reply_markup=admin_menu_keyboard(),
+    )
+
+
+# ---------- Редактирование ссылки ----------
+@router.callback_query(F.data == "admin:edit_keep_url", EditGuideStates.run)
+async def edit_keep_url(callback: CallbackQuery, state: FSMContext):
+    await _finish_edit(callback.message, state)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin:edit_remove_url", EditGuideStates.run)
+async def edit_remove_url(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    cid = data["edit_category"]
+    idx = data["edit_index"]
+    guides = load_guides()
+    g = guides[cid]["guide"][idx]
+    g.pop("url", None)
+    g.pop("url_label", None)
+    save_guides(guides)
+    await _finish_edit(callback.message, state)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin:edit_change_url", EditGuideStates.run)
+async def edit_change_url(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(edit_step="new_url")
+    await safe_edit(callback.message, "Введите новую ссылку (URL):")
     await callback.answer()
 
 

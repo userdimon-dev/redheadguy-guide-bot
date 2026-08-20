@@ -54,3 +54,34 @@ def setup_logging(level: int = logging.INFO) -> None:
 
 # Настраиваем логирование при импорте
 setup_logging()
+
+# Аналитический логгер — пишет отдельно в logs/analytics.log.
+# Используется для фиксации действий пользователей (просмотры гайдов и т.п.).
+ANALYTICS_FILE = os.path.join(LOG_DIR, "analytics.log")
+
+
+def get_analytics_logger() -> logging.Logger:
+    """
+    Возвращает логгер для аналитики (действий пользователей).
+    Пишет отдельно в logs/analytics.log и не дублируется в общий bot.log.
+    """
+    logger = logging.getLogger("analytics")
+    # Настраиваем только один раз
+    if not logger.handlers:
+        logger.setLevel(logging.INFO)
+        logger.propagate = False  # не отправляем в корневой (bot.log)
+
+        try:
+            os.makedirs(LOG_DIR, exist_ok=True)
+            formatter = logging.Formatter(
+                "%(asctime)s | %(message)s", datefmt=LOG_DATE_FORMAT
+            )
+            fh = logging.FileHandler(ANALYTICS_FILE, encoding="utf-8")
+            fh.setLevel(logging.INFO)
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+        except Exception as e:
+            print(f"[analytics] Не удалось настроить файловый лог: {e}")
+
+    return logger
+

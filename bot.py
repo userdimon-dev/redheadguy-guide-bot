@@ -25,6 +25,9 @@ import logger as logger_setup  # настраивает логирование (
 # ---------- Логирование ----------
 logger = logging.getLogger("bot")
 
+# Аналитический логгер (действия пользователей — просмотры и т.п.)
+analytics = logger_setup.get_analytics_logger()
+
 
 def safe_edit(message, text, **kwargs):
     """Безопасное редактирование сообщения, игнорирует «message is not modified»."""
@@ -58,6 +61,8 @@ WELCOME_TEXT = (
 # ---------- Команда /start ----------
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
+    u = message.from_user
+    analytics.info("START | user_id=%s | username=%s", u.id, u.username or "-")
     await message.answer(
         WELCOME_TEXT,
         reply_markup=main_menu_keyboard(),
@@ -91,6 +96,12 @@ async def choose_category(callback: CallbackQuery):
     guides = load_guides()
     category = guides[category_id]
 
+    u = callback.from_user
+    analytics.info(
+        "CATEGORY | user_id=%s | category=%s | title=%s",
+        u.id, category_id, category.get("title", ""),
+    )
+
     await safe_edit(
         callback.message,
         f"📂 <b>{category['title']}</b>\n\nВыберите нужную инструкцию:",
@@ -106,6 +117,12 @@ async def show_guide(callback: CallbackQuery):
     index = int(index_str)
     guides = load_guides()
     guide = guides[category_id]["guide"][index]
+
+    u = callback.from_user
+    analytics.info(
+        "GUIDE | user_id=%s | category=%s | guide_idx=%s | title=%s",
+        u.id, category_id, index, guide.get("title", ""),
+    )
 
     keyboard = guide_keyboard(category_id, index, guide)
     text = f"<b>{guide['title']}</b>\n\n{guide['text']}"
