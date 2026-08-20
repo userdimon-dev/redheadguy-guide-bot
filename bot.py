@@ -16,8 +16,9 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from config import BOT_TOKEN
-from guides import GUIDES
+from guides import load_guides
 from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
+import admin
 
 # ---------- Логирование ----------
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +31,7 @@ bot = Bot(
     default=DefaultBotProperties(parse_mode=ParseMode.HTML),
 )
 dp = Dispatcher()
+dp.include_router(admin.router)
 
 WELCOME_TEXT = (
     "👋 <b>Привет! Я — бот с гайдами RedheadGuy.</b>\n\n"
@@ -71,7 +73,8 @@ async def back_to_menu(callback: CallbackQuery):
 @dp.callback_query(F.data.startswith("cat:"))
 async def choose_category(callback: CallbackQuery):
     category_id = callback.data.split(":", 1)[1]
-    category = GUIDES[category_id]
+    guides = load_guides()
+    category = guides[category_id]
 
     await callback.message.edit_text(
         f"📂 <b>{category['title']}</b>\n\nВыберите нужную инструкцию:",
@@ -85,7 +88,8 @@ async def choose_category(callback: CallbackQuery):
 async def show_guide(callback: CallbackQuery):
     _, category_id, index_str = callback.data.split(":", 2)
     index = int(index_str)
-    guide = GUIDES[category_id]["guide"][index]
+    guides = load_guides()
+    guide = guides[category_id]["guide"][index]
 
     keyboard = guide_keyboard(category_id, index, guide)
     text = f"<b>{guide['title']}</b>\n\n{guide['text']}"

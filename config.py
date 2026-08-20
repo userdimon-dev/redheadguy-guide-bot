@@ -12,6 +12,16 @@ load_dotenv()
 # ---------- Токен бота (обязательно) ----------
 BOT_TOKEN = os.getenv("BOT_TOKEN", "PASTE_YOUR_BOT_TOKEN_HERE")
 
+# ---------- Админ (обязательно для админ-панели) ----------
+# Telegram ID администратора, который может управлять контентом.
+# Можно указать несколько ID через запятую: ADMIN_ID=294323949,123456789
+ADMIN_ID = [int(x.strip()) for x in os.getenv("ADMIN_ID", "").split(",") if x.strip()]
+
+
+def is_admin(user_id: int) -> bool:
+    """Проверяет, является ли user_id администратором."""
+    return user_id in ADMIN_ID
+
 # ---------- Ссылки (опционально, настраиваются через .env) ----------
 # Основной бот — всегда нужен (если не задан, кнопка использует дефолтную ссылку)
 MAIN_BOT_URL = os.getenv("MAIN_BOT_URL", "https://t.me/redheadguy_bot")

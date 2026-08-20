@@ -3,15 +3,16 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import MAIN_BOT_URL, get_extra_links
+from guides import load_guides
 
 
 # ---------- Кнопки главного меню (категории) ----------
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     """Главное меню со списком категорий гайдов."""
-    from guides import GUIDES
+    guides = load_guides()
 
     builder = InlineKeyboardBuilder()
-    for category_id, category in GUIDES.items():
+    for category_id, category in guides.items():
         builder.button(
             text=category["title"],
             callback_data=f"cat:{category_id}",
@@ -23,11 +24,11 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 # ---------- Кнопки конкретной категории (список гайдов) ----------
 def category_keyboard(category_id: str) -> InlineKeyboardMarkup:
     """Список гайдов внутри категории + кнопка «Назад»."""
-    from guides import GUIDES
+    guides = load_guides()
 
     builder = InlineKeyboardBuilder()
-    for index in range(len(GUIDES[category_id]["guide"])):
-        guide = GUIDES[category_id]["guide"][index]
+    for index in range(len(guides[category_id]["guide"])):
+        guide = guides[category_id]["guide"][index]
         builder.button(
             text=guide["title"],
             callback_data=f"guide:{category_id}:{index}",
@@ -40,8 +41,6 @@ def category_keyboard(category_id: str) -> InlineKeyboardMarkup:
 # ---------- Кнопки внутри конкретного гайда ----------
 def guide_keyboard(category_id: str, index: int, guide: dict) -> InlineKeyboardMarkup:
     """Кнопки для показанного гайда: ссылка (если есть) + навигация."""
-    from guides import GUIDES
-
     builder = InlineKeyboardBuilder()
 
     # 1. Обычная ссылка гайда (если задана)
