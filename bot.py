@@ -12,6 +12,8 @@ import logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 from config import BOT_TOKEN
 from guides import GUIDES
@@ -21,8 +23,12 @@ from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
 logging.basicConfig(level=logging.INFO)
 
 # ---------- Инициализация ----------
-# parse_mode=HTML включает рендеринг HTML-разметки (<b>, <a> и т.д.) для всех сообщений
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+# default=DefaultBotProperties(parse_mode=HTML) включает рендеринг
+# HTML-разметки (<b>, <a> и т.д.) для всех сообщений
+bot = Bot(
+    token=BOT_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+)
 dp = Dispatcher()
 
 WELCOME_TEXT = (
