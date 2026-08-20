@@ -1,5 +1,10 @@
 # 🤖 RedheadGuy Guide Bot
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![aiogram](https://img.shields.io/badge/aiogram-3.x-0d8b9b?style=flat-square)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+
 **Telegram-бот с пошаговыми гайдами** по настройке приложений, подключению к сервисам
 и рекомендациям RedheadGuy. Работает на **aiogram 3** (Python 3), деплой через **Docker Compose**.
 
@@ -91,8 +96,8 @@ python bot.py
 | Переменная | Обязат. | Описание |
 |------------|:-------:|----------|
 | `BOT_TOKEN` | ✅ | Токен бота от [@BotFather](https://t.me/BotFather). |
-| `ADMIN_ID` | ✅ | Telegram ID администратора(ов), которым доступна админ-панель. Несколько ID — через запятую: `294323949,123456789` |
-| `MAIN_BOT_URL` | ❌ | Ссылка на основной бот RedheadGuy (для кнопки в гайдах). По умолчанию `https://t.me/redheadguy_bot` |
+| `ADMIN_ID` | ✅ | Telegram ID администратора(ов), которым доступна админ-панель. Несколько ID — через запятую: `123456789,987654321` |
+| `MAIN_BOT_URL` | ❌ | Ссылка на основной бот (для кнопки в гайдах). По умолчанию `https://t.me/your_main_bot` |
 | `CHANNEL_URL` | ❌ | Ссылка на канал новостей (кнопка «📢 Канал новостей») |
 | `CABINET_URL` | ❌ | Ссылка на личный кабинет (кнопка «👤 Личный кабинет») |
 | `SUPPORT_URL` | ❌ | Ссылка на поддержку (кнопка «💬 Поддержка») |
@@ -108,15 +113,15 @@ python bot.py
 # Обязательно
 BOT_TOKEN=123456789:AAEjklmnopqrstuvwxyz_abcdefghijk
 
-# Кому доступна админ-панель
-ADMIN_ID=294323949
+# Кому доступна админ-панель (ваш Telegram ID)
+ADMIN_ID=123456789
 
-# Ссылки RedheadGuy (кнопки в гайдах)
-MAIN_BOT_URL=https://t.me/redheadguy_bot
-CHANNEL_URL=https://t.me/redheadguy_channel
-CABINET_URL=https://cabinet.redheadguy.example
-SUPPORT_URL=https://t.me/redheadguy_support
-SITE_URL=https://redheadguy.example
+# Ссылки RedheadGuy (кнопки в гайдах) — примеры
+MAIN_BOT_URL=https://t.me/your_main_bot
+CHANNEL_URL=https://t.me/your_channel
+CABINET_URL=https://cabinet.example.com
+SUPPORT_URL=https://t.me/your_support
+SITE_URL=https://example.com
 ```
 
 ---
@@ -143,9 +148,9 @@ SITE_URL=https://redheadguy.example
 Действия пользователей пишутся в файл `logs/analytics.log`:
 
 ```
-2026-08-20 18:23:57 | START    | user_id=294323949 | username=userdimon
-2026-08-20 18:23:58 | CATEGORY | user_id=294323949 | category=happ | title=Happ
-2026-08-20 18:23:59 | GUIDE    | user_id=294323949 | category=happ | guide_idx=0 | title=...
+2026-08-20 18:23:57 | START    | user_id=123456789 | username=example_user
+2026-08-20 18:23:58 | CATEGORY | user_id=123456789 | category=happ | title=Happ
+2026-08-20 18:23:59 | GUIDE    | user_id=123456789 | category=happ | guide_idx=0 | title=...
 ```
 
 События: `START` (запуск бота), `CATEGORY` (просмотр категории), `GUIDE` (просмотр гайда).
@@ -173,6 +178,7 @@ redheadguy-guide-bot/
 ├── media/photos/        # загруженные картинки-инструкции
 ├── logs/                # файлы логов и аналитики
 ├── VERSION              # номер версии бота
+├── CHANGELOG.md         # история версий
 ├── Dockerfile           # сборка образа
 ├── docker-compose.yml   # оркестрация (Docker Compose)
 ├── requirements.txt     # зависимости
@@ -182,10 +188,20 @@ redheadguy-guide-bot/
 
 ---
 
-## 🏷️ Версии
+## 🏷️ Changelog
 
-- `v1.0.0` — первый релиз: полное управление гайдами и категориями через админ-панель,
-  аналитика, логирование, обработка ошибок.
+Полный журнал версий — в [CHANGELOG.md](CHANGELOG.md).
+
+### v1.0.0 (2026-08-20) — первый релиз
+- 🚀 Запуск бота на aiogram 3
+- 🔐 Админ-панель: добавление, редактирование, удаление гайдов и категорий
+- 📂 Хранение контента в JSON
+- 📊 Аналитика действий пользователей
+- 📝 Логирование (консоль + файл + аналитика)
+- 🛡️ Обработка ошибок и защита от двойных нажатий
+- 🖼️ Поддержка картинок-инструкций
+- 🏷️ Команды `/version`, `/about`
+- 🐳 Деплой через Docker Compose
 
 ---
 
