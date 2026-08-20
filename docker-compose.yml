@@ -1,6 +1,4 @@
-version: "3.8"
-
-services:
+﻿services:
   bot:
     build: .
     container_name: redheadguy-guide-bot
@@ -11,9 +9,11 @@ services:
       # Монтируем контент/медиа/логи, чтобы изменения и логи переживали пересборку
       - ./media:/app/media
       - ./logs:/app/logs
-      # Файл контента (гайды) — чтобы правки через админку сохранялись
-      - ./data/guides.json:/app/data/guides.json
-      - ./data/users.json:/app/data/users.json
+      # ВАЖНО: монтируем ВСЮ папку data/, а не отдельные файлы.
+      # Если монтировать guides.json отдельным файлом, то при атомарной замене
+      # (os.replace в веб-редакторе) контейнер продолжит видеть старый inode
+      # и не увидит новые гайды. Монтаж папки решает эту проблему.
+      - ./data:/app/data
 
   web:
     build:
@@ -32,4 +32,3 @@ services:
     environment:
       # Позволяем переменным окружения переопределить имя сайта при необходимости
       - WEB_SITE_NAME=${WEB_SITE_NAME:-RedheadGuy Admin}
-
