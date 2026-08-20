@@ -12,7 +12,7 @@ import logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, ErrorEvent
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
@@ -31,9 +31,11 @@ def safe_edit(message, text, **kwargs):
     try:
         return message.edit_text(text, **kwargs)
     except TelegramBadRequest as e:
-        if "message is not modified" in str(e).lower():
-            return
+        err = f"{e} {getattr(e, 'message', '')}".lower()
+        if "not modified" in err:
+            return  # контент уже тот же — пропускаем
         raise
+
 
 # ---------- Инициализация ----------
 # default=DefaultBotProperties(parse_mode=HTML) включает рендеринг
@@ -127,6 +129,21 @@ async def show_guide(callback: CallbackQuery):
 
 
 # ---------- Запуск ----------
+@dp.errors()
+async def error_handler(event: ErrorEvent):
+    """Глобальный перехватчик ошибок. Подавляет «message is not modified»."""
+    exc = event.exception
+    # Подавляем ошибку повторного редактирования (не критично)
+    if isinstance(exc, TelegramBadRequest):
+        err = f"{exc} {getattr(exc, 'message', '')}".lower()
+        if "not modified" in err:
+            logger.debug("Подавлена ошибка 'message is not modified'")
+            return True  # значит ошибка обработана, не логируем как ERROR
+    # Остальные ошибки логируем как обычно
+    logger.error("Ошибка при обработке апдейта: %s", exc)
+    return False
+
+
 async def main():
     try:
         logger.info("Бот запущен. Ожидание сообщений...")
