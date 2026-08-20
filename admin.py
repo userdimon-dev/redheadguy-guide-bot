@@ -9,6 +9,7 @@ import logging
 import os
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, FSInputFile
@@ -21,6 +22,20 @@ from states import AddGuideStates, AddCategoryStates
 
 router = Router()
 logger = logging.getLogger("admin")
+
+
+def safe_edit(message, text, **kwargs):
+    """
+    Безопасное редактирование сообщения.
+    Игнорирует ошибку 'message is not modified' (повторное нажатие),
+    чтобы не спамить логами и не падать.
+    """
+    try:
+        return message.edit_text(text, **kwargs)
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            return  # контент уже тот же — пропускаем
+        raise
 
 # Папка для медиа (скриншоты и т.п.)
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), "media")
@@ -83,7 +98,7 @@ async def admin_show_list(callback: CallbackQuery):
         text += f"▪️ <b>{cat['title']}</b> (id: {cid}) — {len(cat['guide'])} гайда\n"
     text += "\nВыберите действие:"
 
-    await callback.message.edit_text(text, reply_markup=admin_menu_keyboard())
+    await safe_edit(callback.message, text, reply_markup=admin_menu_keyboard())
     await callback.answer()
 
 
@@ -95,7 +110,8 @@ async def add_category_start(callback: CallbackQuery, state: FSMContext):
         return
 
     await state.set_state(AddCategoryStates.enter_id)
-    await callback.message.edit_text(
+    await safe_edit(
+        callback.message,
         "📂 Введите <b>ID категории</b> (латиницей, без пробелов, "
         "например <code>obhod</code>):\n\n"
         "<i>Напишите /cancel чтобы отменить.</i>"
@@ -139,14 +155,16 @@ async def add_guide_category(callback: CallbackQuery, state: FSMContext):
 
     guides = load_guides()
     if not guides:
-        await callback.message.edit_text(
+        await safe_edit(
+            callback.message,
             "❌ Сначала создайте категорию.",
             reply_markup=admin_menu_keyboard(),
         )
         return
 
     await state.set_state(AddGuideStates.choose_category)
-    await callback.message.edit_text(
+    await safe_edit(
+        callback.message,
         "Выберите категорию для нового гайда:",
         reply_markup=category_choice_keyboard(),
     )
@@ -158,7 +176,8 @@ async def guide_category_selected(callback: CallbackQuery, state: FSMContext):
     cid = callback.data.split(":", 2)[2]
     await state.update_data(category_id=cid)
     await state.set_state(AddGuideStates.enter_title)
-    await callback.message.edit_text(
+    await safe_edit(
+        callback.message,
         "Введите <b>заголовок</b> нового гайда (например, "
         "<i>🖥️ Как подключиться на Windows</i>):"
     )
@@ -203,7 +222,7 @@ async def guide_skip_url(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "admin:no_skip_url", AddGuideStates.enter_url)
 async def guide_no_skip_url(callback: CallbackQuery, state: FSMContext):
     await state.set_state(AddGuideStates.enter_url)
-    await callback.message.edit_text("Введите саму ссылку (URL):")
+    await safe_edit(callback.message, "Введите саму ссылку (URL):")
     await callback.answer()
 
 
@@ -310,7 +329,8 @@ async def guide_botlinks(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "admin:cancel")
 async def admin_cancel(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.edit_text(
+    await safe_edit(
+        callback.message,
         "❌ Действие отменено.",
         reply_markup=admin_menu_keyboard(),
     )

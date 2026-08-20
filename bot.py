@@ -10,6 +10,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.client.default import DefaultBotProperties
@@ -23,6 +24,16 @@ import logger as logger_setup  # настраивает логирование (
 
 # ---------- Логирование ----------
 logger = logging.getLogger("bot")
+
+
+def safe_edit(message, text, **kwargs):
+    """Безопасное редактирование сообщения, игнорирует «message is not modified»."""
+    try:
+        return message.edit_text(text, **kwargs)
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            return
+        raise
 
 # ---------- Инициализация ----------
 # default=DefaultBotProperties(parse_mode=HTML) включает рендеринг
@@ -63,7 +74,8 @@ async def back_to_menu(callback: CallbackQuery):
             reply_markup=keyboard,
         )
     else:
-        await callback.message.edit_text(
+        await safe_edit(
+            callback.message,
             WELCOME_TEXT,
             reply_markup=keyboard,
         )
@@ -77,7 +89,8 @@ async def choose_category(callback: CallbackQuery):
     guides = load_guides()
     category = guides[category_id]
 
-    await callback.message.edit_text(
+    await safe_edit(
+        callback.message,
         f"📂 <b>{category['title']}</b>\n\nВыберите нужную инструкцию:",
         reply_markup=category_keyboard(category_id),
     )
@@ -105,7 +118,8 @@ async def show_guide(callback: CallbackQuery):
             reply_markup=keyboard,
         )
     else:
-        await callback.message.edit_text(
+        await safe_edit(
+            callback.message,
             text,
             reply_markup=keyboard,
         )
