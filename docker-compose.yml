@@ -1,5 +1,4 @@
-﻿services:
-  bot:
+﻿  bot:
     build: .
     container_name: redheadguy-guide-bot
     restart: always
@@ -29,6 +28,10 @@
       # Общий файл контента с ботом
       - ./data:/app/data
       - ./logs:/app/logs
+      # ОБЩАЯ папка медиа с ботом — картинки гайдов, загруженные через веб-панель,
+      # должны попадать в тот же том, что читает бот (media/photos).
+      - ./media:/app/media
     environment:
       # Позволяем переменным окружения переопределить имя сайта при необходимости
       - WEB_SITE_NAME=${WEB_SITE_NAME:-RedheadGuy Admin}
+
