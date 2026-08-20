@@ -9,8 +9,8 @@ import logging
 import os
 import secrets
 
-from fastapi import FastAPI, Request, Form, Response
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi import FastAPI, Request, Form, Response, UploadFile, File
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
@@ -22,8 +22,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
+# Общая с ботом папка медиа (media/photos) — монтируется как volume.
+# В контейнере web она лежит на одном уровне с web/: /app/media
+MEDIA_DIR = os.path.join(os.path.dirname(BASE_DIR), "media")
+PHOTOS_DIR = os.path.join(MEDIA_DIR, "photos")
+os.makedirs(PHOTOS_DIR, exist_ok=True)
+
 app = FastAPI(title="RedheadGuy Admin")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 logger = logging.getLogger("web")
@@ -211,7 +218,9 @@ async def guide_edit_page(request: Request, category_id: str, index: int):
 async def guide_save(request: Request, category_id: str, index: str = Form(default="new"),
                      title: str = Form(...), text: str = Form(...),
                      url: str = Form(default=""), url_label: str = Form(default=""),
-                     show_bot_links: bool = Form(default=False)):
+                     show_bot_links: bool = Form(default=False),
+                     photo_remove: str = Form(default=""),
+                     photo: UploadFile = File(default=None)):
     if _get_session_user(request) is None:
         return RedirectResponse(url="/login", status_code=303)
     guides = load_guides()
@@ -227,6 +236,36 @@ async def guide_save(request: Request, category_id: str, index: str = Form(defau
         new_guide["url_label"] = url_label.strip() or "🔗 Открыть"
     if show_bot_links:
         new_guide["show_bot_links"] = True
+
+    # --- Загрузка картинки (необязательно) ---
+    # При редактировании сохраняем старую картинку, если новую не загрузили.
+    old_photo = None
+    if index and index != "new":
+        try:
+            old_photo = guides[category_id]["guide"][int(index)].get("photo")
+        except (IndexError, KeyError, ValueError):
+            old_photo = None
+
+    if photo_remove == "1":
+        new_guide["photo"] = None  # галочка «удалить картинку»
+    elif photo is not None and photo.filename:
+        ext = os.path.splitext(photo.filename or "")[1].lower() or ".jpg"
+        allowed = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+        if ext not in allowed:
+            ext = ".jpg"
+        fname = f"{secrets.token_hex(8)}{ext}"
+        dest = os.path.join(PHOTOS_DIR, fname)
+        data = await photo.read()
+        with open(dest, "wb") as f:
+            f.write(data)
+        # Храним относительный путь так же, как бот: media/photos/<имя>
+        # с Unix-разделителями (кросс-платформенно).
+        new_guide["photo"] = f"media/photos/{fname}"
+    elif old_photo:
+        new_guide["photo"] = old_photo
+
+    if new_guide.get("photo") is None:
+        new_guide.pop("photo", None)
 
     backup_guides()
     category = guides[category_id]

@@ -8,7 +8,7 @@
     <h1>{% if is_new %}➕ Новый гайд{% else %}✏️ Редактирование гайда{% endif %}</h1>
 </div>
 
-<form method="post" action="/guide/{{ category_id }}/save" class="editor-form">
+<form method="post" action="/guide/{{ category_id }}/save" class="editor-form" enctype="multipart/form-data">
     {% if not is_new %}
         <input type="hidden" name="index" value="{{ index }}">
     {% else %}
@@ -24,6 +24,21 @@
     <div class="form-group">
         <label for="text">Текст гайда (HTML)</label>
         <textarea id="text" name="text" rows="12">{{ guide.get('text','') }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="photo">Картинка гайда (необязательно) — будет показана над текстом в боте</label>
+        <input type="file" id="photo" name="photo" accept="image/png,image/jpeg,image/webp,image/gif">
+        {% if guide.get('photo') %}
+            <div class="photo-current">
+                <span>Текущая картинка:</span>
+                <img src="/media/{{ guide.photo.replace('media/','') }}" alt="Картинка гайда" class="photo-current__img">
+                <label class="form-group form-group--check">
+                    <input type="checkbox" name="photo_remove" value="1">
+                    Удалить картинку
+                </label>
+            </div>
+        {% endif %}
     </div>
 
     <div class="form-grid">
@@ -60,6 +75,12 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+    .photo-current { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .photo-current span { color: var(--text-muted, #9aa3b2); font-size: 0.9rem; }
+    .photo-current__img { max-width: 180px; max-height: 120px; border-radius: 6px; border: 1px solid var(--border, #2a3244); }
+    .photo-current .form-group--check { font-size: 0.9rem; }
+</style>
 <script src="/static/js/sortable.min.js"></script>
 <script>
     // Инициализация TinyMCE (rich text редактор)

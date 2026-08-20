@@ -1,6 +1,6 @@
 # 🤖 RedheadGuy Guide Bot
 
-![Version](https://img.shields.io/badge/version-1.3.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3.2-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-3.x-0d8b9b?style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -272,6 +272,9 @@ redheadguy-guide-bot/
 ## 🏷️ Changelog
 
 Полный журнал версий — в [CHANGELOG.md](CHANGELOG.md).
+
+### v1.3.2 (2026-08-20)
+- 🖼️ Загрузка картинки гайда из веб-панели (показывается в боте над текстом)
 
 ### v1.3.1 (2026-08-20)
 - 🔧 Исправлен вход в веб-редактор через Telegram
