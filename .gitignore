@@ -1,0 +1,17 @@
+# Секреты — не коммитить!
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Фото/медиа (если нужно исключить большие файлы)
+# media/*
