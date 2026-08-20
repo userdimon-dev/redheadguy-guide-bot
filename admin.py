@@ -53,7 +53,20 @@ def admin_menu_keyboard():
     b.button(text="➕ Добавить гайд", callback_data="admin:add_guide")
     b.button(text="📂 Категории и гайды", callback_data="admin:list")
     b.button(text="✏️ Управление гайдами", callback_data="admin:manage")
+    b.button(text="🗑️ Удалить категорию", callback_data="admin:del_cat")
     b.button(text="🏠 Выход в меню", callback_data="menu")
+    b.adjust(1)
+    return b.as_markup()
+
+
+def del_category_choice_keyboard():
+    """Список категорий для удаления."""
+    b = InlineKeyboardBuilder()
+    guides = load_guides()
+    for cid in guides.keys():
+        cnt = len(guides[cid]["guide"])
+        b.button(text=f"🗑️ {guides[cid]['title']} ({cnt})", callback_data=f"admin:delcat:{cid}")
+    b.button(text="◀️ Назад", callback_data="admin:back_menu")
     b.adjust(1)
     return b.as_markup()
 
@@ -567,6 +580,73 @@ async def edit_remove_url(callback: CallbackQuery, state: FSMContext):
 async def edit_change_url(callback: CallbackQuery, state: FSMContext):
     await state.update_data(edit_step="new_url")
     await safe_edit(callback.message, "Введите новую ссылку (URL):")
+    await callback.answer()
+
+
+# ---------- Удаление категории ----------
+@router.callback_query(F.data == "admin:del_cat")
+async def delete_category_start(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    guides = load_guides()
+    if not guides:
+        await safe_edit(callback.message, "📂 Категорий пока нет.", reply_markup=admin_menu_keyboard())
+        return
+    await safe_edit(
+        callback.message,
+        "Выберите категорию для удаления:\n\n"
+        "<i>Внимание: будут удалены все гайды внутри неё.</i>",
+        reply_markup=del_category_choice_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:delcat:"))
+async def delete_category_confirm(callback: CallbackQuery):
+    cid = callback.data.split(":", 2)[2]
+    guides = load_guides()
+    cat = guides.get(cid)
+    if not cat:
+        await safe_edit(callback.message, "❌ Категория не найдена.", reply_markup=admin_menu_keyboard())
+        return
+
+    cnt = len(cat["guide"])
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Да, удалить", callback_data=f"admin:delcat_yes:{cid}")
+    kb.button(text="❌ Нет", callback_data="admin:back_menu")
+    kb.adjust(2)
+    await safe_edit(
+        callback.message,
+        f"⚠️ Удалить категорию <b>«{cat['title']}»</b> "
+        f"вместе с {cnt} гайдами?",
+        reply_markup=kb.as_markup(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:delcat_yes:"))
+async def delete_category_done(callback: CallbackQuery):
+    cid = callback.data.split(":", 2)[2]
+    guides = load_guides()
+    removed = guides.pop(cid, None)
+    save_guides(guides)
+    if removed:
+        logger.info(
+            "Админ %s удалил категорию %s (%s)",
+            callback.from_user.id, removed.get("title"), cid,
+        )
+        await safe_edit(
+            callback.message,
+            f"🗑️ Категория <b>«{removed.get('title')}»</b> удалена.",
+            reply_markup=admin_menu_keyboard(),
+        )
+    else:
+        await safe_edit(
+            callback.message,
+            "❌ Категория не найдена.",
+            reply_markup=admin_menu_keyboard(),
+        )
     await callback.answer()
 
 
