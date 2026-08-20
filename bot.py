@@ -19,9 +19,10 @@ from config import BOT_TOKEN
 from guides import load_guides
 from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
 import admin
+import logger as logger_setup  # настраивает логирование (консоль + файл)
 
 # ---------- Логирование ----------
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("bot")
 
 # ---------- Инициализация ----------
 # default=DefaultBotProperties(parse_mode=HTML) включает рендеринг
@@ -113,8 +114,13 @@ async def show_guide(callback: CallbackQuery):
 
 # ---------- Запуск ----------
 async def main():
-    logging.info("Бот запущен...")
-    await dp.start_polling(bot)
+    try:
+        logger.info("Бот запущен. Ожидание сообщений...")
+        await dp.start_polling(bot)
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Бот остановлен пользователем.")
+    except Exception as e:
+        logger.exception("Критическая ошибка при работе бота: %s", e)
 
 
 if __name__ == "__main__":

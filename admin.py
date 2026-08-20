@@ -5,6 +5,7 @@ Telegram-админ-панель управления контентом гай�
 Реализовано через мастер-диалог (aiogram FSM).
 """
 
+import logging
 import os
 
 from aiogram import F, Router
@@ -19,6 +20,7 @@ from keyboards import main_menu_keyboard
 from states import AddGuideStates, AddCategoryStates
 
 router = Router()
+logger = logging.getLogger("admin")
 
 # Папка для медиа (скриншоты и т.п.)
 MEDIA_DIR = os.path.join(os.path.dirname(__file__), "media")
@@ -52,9 +54,11 @@ def category_choice_keyboard():
 @router.message(Command("admin"))
 async def admin_start(message: Message):
     if not is_admin(message.from_user.id):
+        logger.warning("Отказано в доступе к админке пользователю %s", message.from_user.id)
         await message.answer("⛔ У вас нет доступа к админ-панели.")
         return
 
+    logger.info("Админ %s открыл админ-панель", message.from_user.id)
     await message.answer(
         "🔐 <b>Админ-панель RedheadGuy</b>\n\n"
         "Управление контентом гайдов:",
@@ -120,6 +124,7 @@ async def add_category_title(message: Message, state: FSMContext):
     guides = load_guides()
     guides[cid] = {"title": title, "guide": []}
     save_guides(guides)
+    logger.info("Админ %s создал категорию %s (%s)", message.from_user.id, title, cid)
 
     await state.clear()
     await message.answer(f"✅ Категория <b>{title}</b> создана!", reply_markup=admin_menu_keyboard())
@@ -287,6 +292,10 @@ async def guide_botlinks(callback: CallbackQuery, state: FSMContext):
 
     guides[cid]["guide"].append(new_guide)
     save_guides(guides)
+    logger.info(
+        "Админ %s добавил гайд «%s» в категорию %s",
+        callback.from_user.id, data["title"], cid,
+    )
 
     await state.clear()
     await callback.message.delete()
