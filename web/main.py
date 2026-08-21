@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, File
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-from .config import SITE_NAME, BOT_USERNAME
+from .config import SITE_NAME, BOT_USERNAME, is_admin
 from .auth import verify_telegram_auth
 from .storage import load_guides, save_guides, backup_guides, count_stats
 
@@ -42,26 +42,27 @@ _active_sessions: dict[str, int] = {}  # token -> telegram_id
 def _set_session_cookie(response: Response, telegram_id: int) -> None:
     token = secrets.token_urlsafe(32)
     _active_sessions[token] = telegram_id
-    response.set_cookie("session", token, max_age=60 * 60 * 24, httponly=True)
+    response.set_cookie("session", token, max_age=60 * 60 * 24, httponly=True, samesite="lax")
 
 
 def _get_session_user(request: Request) -> int | None:
     token = request.cookies.get("session")
     if token and token in _active_sessions:
-        return _active_sessions[token]
+        uid = _active_sessions[token]
+        if is_admin(uid):
+            return uid
     return None
 
 
 # ---------- Страницы ----------
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    if _get_session_user(request) is None:
-        return RedirectResponse(url="/login", status_code=303)
+    user = _get_session_user(request)
     guides = load_guides()
     stats = count_stats()
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "guides": guides, "stats": stats, "site_name": SITE_NAME},
+        {"request": request, "guides": guides, "stats": stats, "site_name": SITE_NAME, "session_user": user},
     )
 
 
@@ -155,8 +156,7 @@ async def category_rename(request: Request, category_id: str, title: str = Form(
 # ---------- Страницы категории / CRUD гайда ----------
 @app.get("/category/{category_id}", response_class=HTMLResponse)
 async def category_page(request: Request, category_id: str):
-    if _get_session_user(request) is None:
-        return RedirectResponse(url="/login", status_code=303)
+    user = _get_session_user(request)
     guides = load_guides()
     if category_id not in guides:
         return RedirectResponse(url="/", status_code=303)
@@ -168,6 +168,7 @@ async def category_page(request: Request, category_id: str):
             "category": category,
             "category_id": category_id,
             "site_name": SITE_NAME,
+            "session_user": user,
         },
     )
 
@@ -193,23 +194,59 @@ async def guide_new_page(request: Request, category_id: str):
 
 
 @app.get("/guide/{category_id}/{index}", response_class=HTMLResponse)
-async def guide_edit_page(request: Request, category_id: str, index: int):
-    if _get_session_user(request) is None:
-        return RedirectResponse(url="/login", status_code=303)
+async def guide_page(request: Request, category_id: str, index: int):
+    user = _get_session_user(request)
+    guides = load_guides()
+    category = guides.get(category_id)
+    if not category or index >= len(category["guide"]):
+        return RedirectResponse(url="/", status_code=303)
+    guide = category["guide"][index]
+
+    if user is not None:
+        return templates.TemplateResponse(
+            "guide_edit.html",
+            {
+                "request": request,
+                "category_id": category_id,
+                "index": index,
+                "guide": guide,
+                "is_new": False,
+                "site_name": SITE_NAME,
+                "session_user": user,
+            },
+        )
+    return templates.TemplateResponse(
+        "guide_view.html",
+        {
+            "request": request,
+            "category": category,
+            "category_id": category_id,
+            "index": index,
+            "guide": guide,
+            "site_name": SITE_NAME,
+            "session_user": None,
+        },
+    )
+
+
+@app.get("/guide/{category_id}/{index}/view", response_class=HTMLResponse)
+async def guide_view_page(request: Request, category_id: str, index: int):
+    user = _get_session_user(request)
     guides = load_guides()
     category = guides.get(category_id)
     if not category or index >= len(category["guide"]):
         return RedirectResponse(url="/", status_code=303)
     guide = category["guide"][index]
     return templates.TemplateResponse(
-        "guide_edit.html",
+        "guide_view.html",
         {
             "request": request,
+            "category": category,
             "category_id": category_id,
             "index": index,
             "guide": guide,
-            "is_new": False,
             "site_name": SITE_NAME,
+            "session_user": user,
         },
     )
 

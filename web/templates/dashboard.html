@@ -23,39 +23,43 @@
     </div>
 </div>
 
-<!-- Добавить категорию -->
+{% if session_user %}
+<!-- Добавить категорию (только для админов) -->
 <form method="post" action="/category/add" class="inline-form">
     <input type="text" name="category_id" placeholder="id (латиницей, напр. obhod)" required>
     <input type="text" name="title" placeholder="Название (с эмодзи)" required>
     <button type="submit" class="btn btn--primary">➕ Добавить</button>
 </form>
+{% endif %}
 
-<!-- Список категорий (сортировка drag-and-drop) -->
+<!-- Список категорий -->
 <ul id="category-sort" class="card-list">
     {% for category_id, category in guides.items() %}
     <li class="card-list__item" data-id="{{ category_id }}">
-        <span class="drag-handle">⠿</span>
+        {% if session_user %}<span class="drag-handle">⠿</span>{% endif %}
         <a href="/category/{{ category_id }}" class="category-name">
             {{ category.title }}
             <span class="badge">{{ category.guide|length }}</span>
         </a>
+        {% if session_user %}
         <form method="post" action="/category/{{ category_id }}/delete" class="inline-form inline-form--right"
               onsubmit="return confirm('Удалить категорию и все её гайды?');">
             <button type="submit" class="btn btn--danger">🗑️</button>
         </form>
+        {% endif %}
     </li>
     {% endfor %}
 </ul>
 
 {% if not guides %}
-    <p class="empty">Категорий пока нет. Добавьте первую 👆</p>
+    <p class="empty">Категорий пока нет.</p>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if session_user %}
 <script src="/static/js/sortable.min.js"></script>
 <script>
-    // Сортировка категорий
     const catList = document.getElementById('category-sort');
     if (catList) {
         new Sortable(catList, {
@@ -74,4 +78,5 @@
         });
     }
 </script>
+{% endif %}
 {% endblock %}

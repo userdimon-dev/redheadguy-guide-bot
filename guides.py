@@ -23,10 +23,12 @@ def load_guides() -> dict:
 
 
 def save_guides(guides: dict) -> None:
-    """Сохраняет словарь гайдов в JSON-файл."""
+    """Сохраняет словарь гайдов в JSON-файл (атомарная запись)."""
     os.makedirs(DATA_DIR, exist_ok=True)
-    with open(GUIDES_FILE, "w", encoding="utf-8") as f:
+    tmp = GUIDES_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(guides, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, GUIDES_FILE)
 
 
 # ---------- Очистка HTML для Telegram ----------
@@ -89,6 +91,18 @@ def clean_html_for_telegram(text: str) -> str:
     text = re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))), text)
     text = re.sub(r"&#x([0-9a-fA-F]+);", lambda m: chr(int(m.group(1), 16)), text)
 
+    # Приводим <strong>/<em>/<ins>/<del>/<strike> к каноничным <b>/<i>/<u>/<s>
+    # ДО основного цикла очистки, чтобы канонические теги не удалились.
+    replacements = [
+        (r"<strong\b[^>]*>", "<b>"), (r"</strong>", "</b>"),
+        (r"<em\b[^>]*>", "<i>"), (r"</em>", "</i>"),
+        (r"<ins\b[^>]*>", "<u>"), (r"</ins>", "</u>"),
+        (r"<del\b[^>]*>", "<s>"), (r"</del>", "</s>"),
+        (r"<strike\b[^>]*>", "<s>"), (r"</strike>", "</s>"),
+    ]
+    for pattern, repl in replacements:
+        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+
     # Разбираем посимвольно: строим выход, сохраняя только каноничные теги
     out = []
     i, n = 0, len(text)
@@ -133,23 +147,9 @@ def clean_html_for_telegram(text: str) -> str:
 
     text = "".join(out)
 
-    # Приводим <strong>/<em>/<ins>/<del>/<strike> к каноничным <b>/<i>/<u>/<s>
-    # (на случай, если они попали в текст не через блочную обработку).
-    replacements = [
-        ("<strong>", "<b>"), ("</strong>", "</b>"),
-        ("<em>", "<i>"), ("</em>", "</i>"),
-        ("<ins>", "<u>"), ("</ins>", "</u>"),
-        ("<del>", "<s>"), ("</del>", "</s>"),
-        ("<strike>", "<s>"), ("</strike>", "</s>"),
-    ]
-    for a, b in replacements:
-        text = text.replace(a, b).replace(a.upper(), b)
-
     # Чистим лишние пустые строки (больше двух подряд)
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
 
 
-# Актуальный срез гайдов для использования в боте (загружается при старте)
-GUIDES = load_guides()
