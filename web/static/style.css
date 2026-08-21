@@ -9,6 +9,8 @@
     --primary-dark: #1b86b9;
     --danger: #ef4444;
     --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    --tg-bg: #18222d;
+    --tg-border: #232e3c;
 }
 
 * { box-sizing: border-box; }
@@ -180,19 +182,33 @@ body {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(34, 158, 217, 0.25);
 }
-.form-group textarea {
-    width: 100%;
+
+/* Quill.js Тёмная тема */
+.ql-toolbar.ql-snow {
     background: var(--bg);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 14px;
+    border-color: var(--border) !important;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
 }
+.ql-container.ql-snow {
+    background: var(--bg);
+    border-color: var(--border) !important;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    color: var(--text);
+    min-height: 200px;
+    font-size: 15px;
+}
+.ql-snow .ql-stroke { stroke: var(--text) !important; }
+.ql-snow .ql-fill { fill: var(--text) !important; }
+.ql-snow .ql-picker { color: var(--text) !important; }
+.ql-snow .ql-picker-options { background-color: var(--card) !important; border-color: var(--border) !important; }
+
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-group--check label { font-weight: 400; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .editor-actions { display: flex; gap: 12px; }
 
-/* Превью */
+/* Превью и Telegram карточка */
 .preview-panel {
     background: var(--card);
     border: 1px solid var(--border);
@@ -207,7 +223,66 @@ body {
     border-bottom: 1px solid var(--border);
     color: var(--text);
 }
-.preview-panel__body { padding: 20px; color: var(--text); }
-.preview-panel__body h2 { margin-top: 0; color: var(--text); }
+.preview-panel__body { padding: 20px; background: #0e1621; }
+
+.telegram-card {
+    max-width: 520px;
+    margin: 0 auto;
+    background: var(--tg-bg);
+    border: 1px solid var(--tg-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.telegram-card__photo img {
+    width: 100%;
+    display: block;
+    max-height: 380px;
+    object-fit: cover;
+}
+.telegram-card__content {
+    padding: 16px 18px;
+}
+.telegram-card__title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+.telegram-card__text {
+    font-size: 15px;
+    color: #e1e7ed;
+    line-height: 1.5;
+}
+.telegram-card__text p { margin: 0 0 8px; }
+.telegram-card__text pre,
+.telegram-card__text code {
+    background: #10161f;
+    border-left: 3px solid var(--primary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: "Courier New", Courier, monospace;
+    color: #38bdf8;
+    overflow-x: auto;
+}
+.telegram-card__text a { color: #64b5f6; text-decoration: underline; }
+.telegram-card__buttons {
+    padding: 0 16px 16px;
+}
+.telegram-card__btn {
+    display: block;
+    width: 100%;
+    background: var(--primary);
+    color: #ffffff;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background 0.15s;
+    margin-top: 8px;
+}
+.telegram-card__btn:hover { background: var(--primary-dark); }
 
 .footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px; }

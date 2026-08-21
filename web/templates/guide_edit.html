@@ -2,13 +2,18 @@
 
 {% block title %}{% if is_new %}Новый гайд{% else %}Редактирование{% endif %} — {{ site_name }}{% endblock %}
 
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="page-head">
     <a href="/category/{{ category_id }}" class="back-link">← Назад к категории</a>
     <h1>{% if is_new %}➕ Новый гайд{% else %}✏️ Редактирование гайда{% endif %}</h1>
 </div>
 
-<form method="post" action="/guide/{{ category_id }}/save" class="editor-form" enctype="multipart/form-data">
+<form method="post" action="/guide/{{ category_id }}/save" id="guideForm" class="editor-form" enctype="multipart/form-data">
     {% if not is_new %}
         <input type="hidden" name="index" value="{{ index }}">
     {% else %}
@@ -22,12 +27,13 @@
     </div>
 
     <div class="form-group">
-        <label for="text">Текст гайда (HTML)</label>
-        <textarea id="text" name="text" rows="12">{{ guide.get('text','') }}</textarea>
+        <label>Текст гайда</label>
+        <div id="quill-editor" class="quill-dark"></div>
+        <input type="hidden" id="text" name="text" value="{{ guide.get('text','') }}">
     </div>
 
     <div class="form-group">
-        <label for="photo">Картинка гайда (необязательно) — будет показана над текстом в боте</label>
+        <label for="photo">Картинка гайда (необязательно) — будет показана над текстом</label>
         <input type="file" id="photo" name="photo" accept="image/png,image/jpeg,image/webp,image/gif">
         {% if guide.get('photo') %}
             <div class="photo-current">
@@ -67,50 +73,96 @@
     </div>
 </form>
 
-<!-- Превью гайда -->
+<!-- Превью в стиле Telegram-поста -->
 <div class="preview-panel">
-    <div class="preview-panel__head">👁️ Превью</div>
-    <div id="preview" class="preview-panel__body"></div>
+    <div class="preview-panel__head">✈️ Живое превью Telegram</div>
+    <div class="preview-panel__body">
+        <div class="telegram-card">
+            {% if guide.get('photo') %}
+                <div class="telegram-card__photo" id="previewPhoto">
+                    <img src="/media/{{ guide.photo.replace('media/','') }}" alt="Картинка">
+                </div>
+            {% else %}
+                <div class="telegram-card__photo" id="previewPhoto" style="display:none;"></div>
+            {% endif %}
+            <div class="telegram-card__content">
+                <div class="telegram-card__title" id="previewTitle"></div>
+                <div class="telegram-card__text" id="previewText"></div>
+            </div>
+            <div class="telegram-card__buttons" id="previewButtons"></div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <style>
     .photo-current { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .photo-current span { color: var(--text-muted, #9aa3b2); font-size: 0.9rem; }
-    .photo-current__img { max-width: 180px; max-height: 120px; border-radius: 6px; border: 1px solid var(--border, #2a3244); }
+    .photo-current span { color: var(--muted); font-size: 0.9rem; }
+    .photo-current__img { max-width: 180px; max-height: 120px; border-radius: 6px; border: 1px solid var(--border); }
     .photo-current .form-group--check { font-size: 0.9rem; }
 </style>
-<script src="/static/js/sortable.min.js"></script>
 <script>
-    // Инициализация TinyMCE (rich text редактор)
-    tinymce.init({
-        selector: '#text',
-        height: 400,
-        menubar: false,
-        plugins: 'lists link image code charmap table preview',
-        toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | link | code',
-        setup: function(editor) {
-            editor.on('input change', function() {
-                updatePreview();
-            });
+    // Инициализация Quill.js
+    const initialText = document.getElementById('text').value || '';
+    const quill = new Quill('#quill-editor', {
+        theme: 'snow',
+        placeholder: 'Введите пошаговую инструкцию...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                ['code-block', 'link'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['clean']
+            ]
         }
     });
 
-    // Живое превью
-    const titleInput = document.getElementById('title');
-    const preview = document.getElementById('preview');
-    function updatePreview() {
-        const title = titleInput.value || 'Название гайда';
-        const text = tinymce.get('text') ? tinymce.get('text').getContent() : '';
-        preview.innerHTML = '<h2>' + escapeHtml(title) + '</h2>' + text;
+    if (initialText) {
+        quill.clipboard.dangerouslyPasteHTML(initialText);
     }
-    titleInput.addEventListener('input', updatePreview);
-    updatePreview();
 
-    // Превью рендерит HTML — экранируем только заголовок
-    function escapeHtml(str) {
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const form = document.getElementById('guideForm');
+    const textInput = document.getElementById('text');
+    const titleInput = document.getElementById('title');
+    const urlInput = document.getElementById('url');
+    const urlLabelInput = document.getElementById('url_label');
+
+    const previewTitle = document.getElementById('previewTitle');
+    const previewText = document.getElementById('previewText');
+    const previewButtons = document.getElementById('previewButtons');
+
+    function updatePreview() {
+        const html = quill.root.innerHTML === '<p><br></p>' ? '' : quill.root.innerHTML;
+        textInput.value = html;
+
+        previewTitle.textContent = titleInput.value || 'Название гайда';
+        previewText.innerHTML = html || '<i>Текст инструкции...</i>';
+
+        // Обновляем кнопки в превью
+        previewButtons.innerHTML = '';
+        const url = urlInput.value.trim();
+        const urlLabel = urlLabelInput.value.trim() || '🔗 Открыть';
+
+        if (url) {
+            const btn = document.createElement('a');
+            btn.className = 'telegram-card__btn';
+            btn.href = url;
+            btn.target = '_blank';
+            btn.textContent = urlLabel;
+            previewButtons.appendChild(btn);
+        }
     }
+
+    quill.on('text-change', updatePreview);
+    titleInput.addEventListener('input', updatePreview);
+    urlInput.addEventListener('input', updatePreview);
+    urlLabelInput.addEventListener('input', updatePreview);
+
+    form.addEventListener('submit', function() {
+        textInput.value = quill.root.innerHTML === '<p><br></p>' ? '' : quill.root.innerHTML;
+    });
+
+    updatePreview();
 </script>
 {% endblock %}
