@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, File
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-from .config import SITE_NAME, BOT_USERNAME
+from .config import SITE_NAME, BOT_USERNAME, is_admin
 from .auth import verify_telegram_auth
 from .storage import load_guides, save_guides, backup_guides, count_stats
 
@@ -42,13 +42,15 @@ _active_sessions: dict[str, int] = {}  # token -> telegram_id
 def _set_session_cookie(response: Response, telegram_id: int) -> None:
     token = secrets.token_urlsafe(32)
     _active_sessions[token] = telegram_id
-    response.set_cookie("session", token, max_age=60 * 60 * 24, httponly=True)
+    response.set_cookie("session", token, max_age=60 * 60 * 24, httponly=True, samesite="lax")
 
 
 def _get_session_user(request: Request) -> int | None:
     token = request.cookies.get("session")
     if token and token in _active_sessions:
-        return _active_sessions[token]
+        uid = _active_sessions[token]
+        if is_admin(uid):
+            return uid
     return None
 
 

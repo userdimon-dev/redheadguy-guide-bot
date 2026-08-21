@@ -1,6 +1,5 @@
 # Прод-версия через Docker Compose
 # Использование: docker compose -f docker-compose.prod.yml up -d
-version: "3.8"
 
 services:
   bot:
@@ -12,8 +11,22 @@ services:
     volumes:
       - ./media:/app/media
       - ./logs:/app/logs
-      - ./data/guides.json:/app/data/guides.json
-      # Контент (гайды) монтируем, чтобы не пересобирать образ при правках
-      - ./guides.py:/app/guides.py:ro
-      - ./config.py:/app/config.py:ro
+      - ./data:/app/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: redheadguy-guide-web
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./media:/app/media
+    environment:
+      - WEB_SITE_NAME=${WEB_SITE_NAME:-RedheadGuy Admin}
 
