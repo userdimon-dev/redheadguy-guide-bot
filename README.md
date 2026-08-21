@@ -1,6 +1,6 @@
 # 🤖 RedheadGuy Guide Bot
 
-![Version](https://img.shields.io/badge/version-1.3.2-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-3.x-0d8b9b?style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -23,8 +23,9 @@
 - 📂 Контент в **JSON** — редактируется через админку, отдельно от кода
 - 🔐 **Telegram-админ-панель** — добавление, редактирование и удаление гайдов и категорий
 - 🌐 **Веб-редактор (FastAPI)** — полноценная панель управления через браузер:
-  - 🔑 вход через Telegram Login Widget,
-  - ✍️ rich text редактор (TinyMCE),
+  - 🔑 вход через Telegram Login Widget (и публичный просмотр гайдов без входа),
+  - 🎨 тёмная тема интерфейса и стилизованные Telegram-карточки предпросмотра,
+  - ✍️ rich text редактор (Quill.js),
   - 🖱️ drag-and-drop сортировка категорий и гайдов,
   - 👁️ живое превью гайда, 📊 счётчики и поиск
 - 📊 **Аналитика** действий пользователей (какие гайды смотрят)
@@ -272,6 +273,13 @@ redheadguy-guide-bot/
 ## 🏷️ Changelog
 
 Полный журнал версий — в [CHANGELOG.md](CHANGELOG.md).
+
+### v1.4.0 (2026-08-20)
+- 🌙 Тёмная тема интерфейса веб-панели
+- ✍️ Замена TinyMCE на Quill.js для удобного редактирования
+- 💬 Карточки предпросмотра гайдов в стиле сообщений Telegram
+- 🌐 Публичный режим просмотра гайдов без авторизации
+- 🧪 Автотесты `pytest` для бота и веб-интерфейса
 
 ### v1.3.2 (2026-08-20)
 - 🖼️ Загрузка картинки гайда из веб-панели (показывается в боте над текстом)
