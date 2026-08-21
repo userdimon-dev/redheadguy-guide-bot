@@ -1,5 +1,7 @@
 import pytest
 import time
+from fastapi.testclient import TestClient
+from web.main import app
 from web.auth import verify_telegram_auth
 from web.storage import count_stats, load_guides, save_guides
 
@@ -41,3 +43,25 @@ def test_count_stats(monkeypatch, tmp_path):
     assert stats["categories"] == 2
     assert stats["guides"] == 3
     assert stats["users"] == 0
+
+
+def test_public_access_routes():
+    client = TestClient(app)
+
+    # GET / should be accessible without session (200 OK)
+    resp_dashboard = client.get("/")
+    assert resp_dashboard.status_code == 200
+    assert "Категории" in resp_dashboard.text
+
+    # GET /category/happ should be accessible without session (200 OK)
+    resp_cat = client.get("/category/happ")
+    assert resp_cat.status_code == 200
+
+    # GET /guide/happ/0/view should be accessible without session (200 OK)
+    resp_guide = client.get("/guide/happ/0/view")
+    assert resp_guide.status_code == 200
+
+    # POST /category/add without session should redirect to /login (303)
+    resp_add = client.post("/category/add", data={"category_id": "test", "title": "Test"}, follow_redirects=False)
+    assert resp_add.status_code == 303
+    assert resp_add.headers["location"] == "/login"

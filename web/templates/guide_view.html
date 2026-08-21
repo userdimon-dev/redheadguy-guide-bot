@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}{{ guide.title }} — {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <a href="/category/{{ category_id }}" class="back-link">← {{ category.title }}</a>
+    <h1>{{ guide.title }}</h1>
+</div>
+
+<div class="guide-view-card">
+    {% if guide.get('photo') %}
+        <div class="guide-view__photo">
+            <img src="/media/{{ guide.photo.replace('media/','') }}" alt="{{ guide.title }}">
+        </div>
+    {% endif %}
+
+    <div class="guide-view__body">
+        {{ guide.text | safe }}
+    </div>
+
+    {% if guide.get('url') or guide.get('show_bot_links') %}
+        <div class="guide-view__actions">
+            {% if guide.get('url') %}
+                <a href="{{ guide.url }}" target="_blank" rel="noopener" class="btn btn--primary">
+                    {{ guide.get('url_label', '🔗 Открыть') }}
+                </a>
+            {% endif %}
+            {% if session_user %}
+                <a href="/guide/{{ category_id }}/{{ index }}" class="btn">✏️ Редактировать</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .guide-view-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: var(--shadow);
+    }
+    .guide-view__photo {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .guide-view__photo img {
+        max-width: 100%;
+        max-height: 450px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+    }
+    .guide-view__body {
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--text);
+        margin-bottom: 24px;
+    }
+    .guide-view__body p { margin-top: 0; margin-bottom: 12px; }
+    .guide-view__body ul, .guide-view__body ol { padding-left: 20px; }
+    .guide-view__actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--border);
+        padding-top: 16px;
+    }
+</style>
+{% endblock %}

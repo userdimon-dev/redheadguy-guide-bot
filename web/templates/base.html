@@ -13,9 +13,11 @@
         <div class="topbar__inner">
             <span class="topbar__logo">📚 {{ site_name }}</span>
             <nav class="topbar__nav">
+                <a href="/" class="topbar__link">Главная</a>
                 {% if session_user %}
-                    <a href="/" class="topbar__link">Главная</a>
                     <a href="/logout" class="topbar__link topbar__link--logout">Выйти 👤{{ session_user }}</a>
+                {% else %}
+                    <a href="/login" class="topbar__link">Войти 🔑</a>
                 {% endif %}
             </nav>
         </div>
@@ -26,7 +28,7 @@
     </main>
 
     <footer class="footer">
-        <p>{{ site_name }} — панель управления гайдами</p>
+        <p>{{ site_name }} — база знаний и гайды</p>
     </footer>
 
     {% block scripts %}{% endblock %}

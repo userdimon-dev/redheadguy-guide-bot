@@ -8,38 +8,43 @@
     <h1>{{ category.title }}</h1>
 </div>
 
-<!-- Переименовать категорию -->
+{% if session_user %}
+<!-- Переименовать категорию (админ) -->
 <form method="post" action="/category/{{ category_id }}/rename" class="inline-form">
     <input type="text" name="title" value="{{ category.title }}" required>
     <button type="submit" class="btn">✏️ Переименовать</button>
 </form>
 
-<!-- Кнопка нового гайда -->
+<!-- Кнопка нового гайда (админ) -->
 <a href="/guide/{{ category_id }}/new" class="btn btn--primary btn--block">➕ Новый гайд</a>
+{% endif %}
 
 <!-- Список гайдов -->
 <ul id="guide-sort" class="card-list">
     {% for guide in category.guide %}
     <li class="card-list__item" data-id="{{ loop.index0 }}">
-        <span class="drag-handle">⠿</span>
-        <a href="/guide/{{ category_id }}/{{ loop.index0 }}" class="category-name">
+        {% if session_user %}<span class="drag-handle">⠿</span>{% endif %}
+        <a href="{% if session_user %}/guide/{{ category_id }}/{{ loop.index0 }}{% else %}/guide/{{ category_id }}/{{ loop.index0 }}/view{% endif %}" class="category-name">
             {{ guide.title }}
         </a>
+        {% if session_user %}
         <form method="post" action="/guide/{{ category_id }}/{{ loop.index0 }}/delete"
               class="inline-form inline-form--right"
               onsubmit="return confirm('Удалить гайд?');">
             <button type="submit" class="btn btn--danger">🗑️</button>
         </form>
+        {% endif %}
     </li>
     {% endfor %}
 </ul>
 
 {% if not category.guide %}
-    <p class="empty">Гайдов пока нет. Добавьте первый 👆</p>
+    <p class="empty">Гайдов пока нет.</p>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if session_user %}
 <script src="/static/js/sortable.min.js"></script>
 <script>
     const guideList = document.getElementById('guide-sort');
@@ -48,7 +53,6 @@
             handle: '.drag-handle',
             animation: 150,
             onEnd: function(evt) {
-                // order — это новые индексы (data-id = старый индекс)
                 const order = Array.from(guideList.children).map(
                     li => parseInt(li.getAttribute('data-id'))
                 );
@@ -61,4 +65,5 @@
         });
     }
 </script>
+{% endif %}
 {% endblock %}
