@@ -15,11 +15,34 @@ GUIDES_FILE = os.path.join(DATA_DIR, "guides.json")
 
 
 def load_guides() -> dict:
-    """Загружает словарь гайдов из JSON-файла."""
+    """Загружает словарь гайдов из JSON-файла с нормализацией полей по умолчанию."""
     if not os.path.exists(GUIDES_FILE):
         return {}
     with open(GUIDES_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+
+    # Нормализация полей по умолчанию: is_hidden, sort_order, row_number
+    normalized = {}
+    for cat_id, cat_data in data.items():
+        if not isinstance(cat_data, dict):
+            continue
+        c = dict(cat_data)
+        c.setdefault("is_hidden", False)
+        c.setdefault("sort_order", 0)
+        c.setdefault("row_number", 1)
+
+        guides_list = []
+        for g in c.get("guide", []):
+            if isinstance(g, dict):
+                g_item = dict(g)
+                g_item.setdefault("is_hidden", False)
+                g_item.setdefault("sort_order", 0)
+                g_item.setdefault("row_number", 1)
+                guides_list.append(g_item)
+        c["guide"] = guides_list
+        normalized[cat_id] = c
+
+    return normalized
 
 
 def save_guides(guides: dict) -> None:

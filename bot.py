@@ -141,7 +141,11 @@ async def back_to_menu(callback: CallbackQuery):
 async def choose_category(callback: CallbackQuery):
     category_id = callback.data.split(":", 1)[1]
     guides = load_guides()
-    category = guides[category_id]
+    category = guides.get(category_id)
+
+    if not category or category.get("is_hidden", False):
+        await callback.answer("Категория недоступна.", show_alert=True)
+        return
 
     u = callback.from_user
     analytics.info(
@@ -163,7 +167,15 @@ async def show_guide(callback: CallbackQuery):
     _, category_id, index_str = callback.data.split(":", 2)
     index = int(index_str)
     guides = load_guides()
-    guide = guides[category_id]["guide"][index]
+    cat = guides.get(category_id)
+    if not cat or cat.get("is_hidden", False) or index < 0 or index >= len(cat.get("guide", [])):
+        await callback.answer("Гайд недоступен.", show_alert=True)
+        return
+
+    guide = cat["guide"][index]
+    if guide.get("is_hidden", False):
+        await callback.answer("Гайд недоступен.", show_alert=True)
+        return
 
     u = callback.from_user
     analytics.info(
@@ -195,14 +207,18 @@ async def show_guide(callback: CallbackQuery):
 
 # ---------- Поиск по гайдам ----------
 def _search_guides(query: str, limit: int = 15) -> list:
-    """Ищет гайды по запросу (по заголовку и тексту). Возвращает список (cat, idx, guide)."""
+    """Ищет только видимые гайды по запросу (по заголовку и тексту). Возвращает список (cat, idx, guide)."""
     q = query.lower().strip()
     if not q:
         return []
     guides = load_guides()
     results = []
     for cat_id, cat in guides.items():
+        if cat.get("is_hidden", False):
+            continue
         for idx, guide in enumerate(cat.get("guide", [])):
+            if guide.get("is_hidden", False):
+                continue
             title = (guide.get("title") or "").lower()
             text = (guide.get("text") or "").lower()
             if q in title or q in text:

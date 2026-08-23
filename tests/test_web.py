@@ -45,21 +45,47 @@ def test_count_stats(monkeypatch, tmp_path):
     assert stats["users"] == 0
 
 
-def test_public_access_routes():
+def test_public_access_routes(monkeypatch):
     client = TestClient(app)
+
+    mock_guides = {
+        "cat1": {
+            "title": "Category 1",
+            "guide": [
+                {"title": "Guide 1", "text": "Content 1"},
+                {"title": "Hidden Guide", "text": "Content Hidden", "is_hidden": True}
+            ]
+        },
+        "cat_hidden": {
+            "title": "Hidden Category",
+            "is_hidden": True,
+            "guide": [{"title": "G1", "text": "T1"}]
+        }
+    }
+    monkeypatch.setattr("web.main.load_guides", lambda: mock_guides)
 
     # GET / should be accessible without session (200 OK)
     resp_dashboard = client.get("/")
     assert resp_dashboard.status_code == 200
-    assert "Категории" in resp_dashboard.text
+    assert "Category 1" in resp_dashboard.text
+    assert "Hidden Category" not in resp_dashboard.text
 
-    # GET /category/happ should be accessible without session (200 OK)
-    resp_cat = client.get("/category/happ")
+    # GET /category/cat1 should be 200
+    resp_cat = client.get("/category/cat1")
     assert resp_cat.status_code == 200
 
-    # GET /guide/happ/0/view should be accessible without session (200 OK)
-    resp_guide = client.get("/guide/happ/0/view")
+    # GET hidden category should return 404 for unauthenticated user
+    resp_cat_hidden = client.get("/category/cat_hidden")
+    assert resp_cat_hidden.status_code == 404
+
+    # GET /guide/cat1/0/view should be 200
+    resp_guide = client.get("/guide/cat1/0/view")
     assert resp_guide.status_code == 200
+    assert "Guide 1" in resp_guide.text
+
+    # GET hidden guide should return 404
+    resp_guide_hidden = client.get("/guide/cat1/1/view")
+    assert resp_guide_hidden.status_code == 404
 
     # POST /category/add without session should redirect to /login (303)
     resp_add = client.post("/category/add", data={"category_id": "test", "title": "Test"}, follow_redirects=False)

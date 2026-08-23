@@ -43,4 +43,37 @@ def test_save_and_load_guides(monkeypatch, tmp_path):
     assert fake_guides_file.exists()
 
     loaded = load_guides()
-    assert loaded == sample_data
+    assert loaded["cat1"]["title"] == "Category 1"
+    assert loaded["cat1"]["is_hidden"] is False
+    assert loaded["cat1"]["sort_order"] == 0
+    assert loaded["cat1"]["row_number"] == 1
+    assert loaded["cat1"]["guide"][0]["title"] == "Guide 1"
+    assert loaded["cat1"]["guide"][0]["is_hidden"] is False
+
+
+def test_guides_hidden_and_grid_defaults(monkeypatch, tmp_path):
+    fake_guides_file = tmp_path / "guides.json"
+    import guides
+    monkeypatch.setattr(guides, "DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(guides, "GUIDES_FILE", str(fake_guides_file))
+
+    sample_data = {
+        "cat1": {
+            "title": "Category 1",
+            "is_hidden": True,
+            "sort_order": 5,
+            "row_number": 2,
+            "guide": [
+                {"title": "G1", "text": "T1", "is_hidden": True, "sort_order": 10, "row_number": 3}
+            ]
+        }
+    }
+
+    guides.save_guides(sample_data)
+    loaded = guides.load_guides()
+    assert loaded["cat1"]["is_hidden"] is True
+    assert loaded["cat1"]["sort_order"] == 5
+    assert loaded["cat1"]["row_number"] == 2
+    assert loaded["cat1"]["guide"][0]["is_hidden"] is True
+    assert loaded["cat1"]["guide"][0]["sort_order"] == 10
+    assert loaded["cat1"]["guide"][0]["row_number"] == 3
