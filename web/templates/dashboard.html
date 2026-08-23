@@ -25,9 +25,14 @@
 
 {% if session_user %}
 <!-- Добавить категорию (только для админов) -->
-<form method="post" action="/category/add" class="inline-form">
-    <input type="text" name="category_id" placeholder="id (латиницей, напр. obhod)" required>
-    <input type="text" name="title" placeholder="Название (с эмодзи)" required>
+<form method="post" action="/category/add" class="inline-form" style="flex-wrap: wrap; gap: 8px;">
+    <input type="text" name="category_id" placeholder="id (напр. obhod)" required style="flex: 1; min-width: 140px;">
+    <input type="text" name="title" placeholder="Название (с эмодзи)" required style="flex: 2; min-width: 180px;">
+    <input type="number" name="sort_order" placeholder="Порядок" value="0" style="width: 80px;" title="Сортировка">
+    <input type="number" name="row_number" placeholder="Ряд" value="1" min="1" style="width: 70px;" title="Номер ряда">
+    <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-muted); font-size: 0.9rem;">
+        <input type="checkbox" name="is_hidden" value="true"> Скрыть
+    </label>
     <button type="submit" class="btn btn--primary">➕ Добавить</button>
 </form>
 {% endif %}
@@ -40,6 +45,14 @@
         <a href="/category/{{ category_id }}" class="category-name">
             {{ category.title }}
             <span class="badge">{{ category.guide|length }}</span>
+            {% if session_user %}
+                {% if category.is_hidden %}
+                <span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">Скрыт</span>
+                {% else %}
+                <span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">Опубликован</span>
+                {% endif %}
+                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 6px;">[ряд: {{ category.row_number|default(1) }}, пор: {{ category.sort_order|default(0) }}]</span>
+            {% endif %}
         </a>
         {% if session_user %}
         <form method="post" action="/category/{{ category_id }}/delete" class="inline-form inline-form--right"

@@ -60,9 +60,31 @@ async def dashboard(request: Request):
     user = _get_session_user(request)
     guides = load_guides()
     stats = count_stats()
+
+    # Сортируем категории по sort_order
+    sorted_categories = sorted(
+        guides.items(),
+        key=lambda x: (x[1].get("sort_order", 0), x[0])
+    )
+
+    # Если пользователь не админ — отдаем только публичные (видимые) категории
+    if user is None:
+        display_categories = [
+            (cid, cat) for cid, cat in sorted_categories
+            if not cat.get("is_hidden", False)
+        ]
+    else:
+        display_categories = sorted_categories
+
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "guides": guides, "stats": stats, "site_name": SITE_NAME, "session_user": user},
+        {
+            "request": request,
+            "guides": dict(display_categories),
+            "stats": stats,
+            "site_name": SITE_NAME,
+            "session_user": user,
+        },
     )
 
 
@@ -115,7 +137,10 @@ async def logout(response: Response):
 
 # ---------- CRUD категорий ----------
 @app.post("/category/add")
-async def category_add(request: Request, category_id: str = Form(...), title: str = Form(...)):
+async def category_add(request: Request, category_id: str = Form(...), title: str = Form(...),
+                       is_hidden: bool = Form(default=False),
+                       sort_order: int = Form(default=0),
+                       row_number: int = Form(default=1)):
     if _get_session_user(request) is None:
         return RedirectResponse(url="/login", status_code=303)
     guides = load_guides()
@@ -123,7 +148,13 @@ async def category_add(request: Request, category_id: str = Form(...), title: st
     if not cid or not title.strip():
         return RedirectResponse(url="/", status_code=303)
     if cid not in guides and cid:
-        guides[cid] = {"title": title.strip(), "guide": []}
+        guides[cid] = {
+            "title": title.strip(),
+            "is_hidden": is_hidden,
+            "sort_order": sort_order,
+            "row_number": row_number,
+            "guide": [],
+        }
         backup_guides()
         save_guides(guides)
     return RedirectResponse(url="/", status_code=303)
@@ -142,12 +173,18 @@ async def category_delete(request: Request, category_id: str):
 
 
 @app.post("/category/{category_id}/rename")
-async def category_rename(request: Request, category_id: str, title: str = Form(...)):
+async def category_rename(request: Request, category_id: str, title: str = Form(...),
+                          is_hidden: bool = Form(default=False),
+                          sort_order: int = Form(default=0),
+                          row_number: int = Form(default=1)):
     if _get_session_user(request) is None:
         return RedirectResponse(url="/login", status_code=303)
     guides = load_guides()
     if category_id in guides and title.strip():
         guides[category_id]["title"] = title.strip()
+        guides[category_id]["is_hidden"] = is_hidden
+        guides[category_id]["sort_order"] = sort_order
+        guides[category_id]["row_number"] = row_number
         backup_guides()
         save_guides(guides)
     return RedirectResponse(url=f"/category/{category_id}", status_code=303)
@@ -161,6 +198,11 @@ async def category_page(request: Request, category_id: str):
     if category_id not in guides:
         return RedirectResponse(url="/", status_code=303)
     category = guides[category_id]
+
+    # Если обычный пользователь и категория скрыта — отдаем 404/редирект
+    if user is None and category.get("is_hidden", False):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+
     return templates.TemplateResponse(
         "category.html",
         {
@@ -234,9 +276,13 @@ async def guide_view_page(request: Request, category_id: str, index: int):
     user = _get_session_user(request)
     guides = load_guides()
     category = guides.get(category_id)
-    if not category or index >= len(category["guide"]):
-        return RedirectResponse(url="/", status_code=303)
+    if not category or index < 0 or index >= len(category.get("guide", [])):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
     guide = category["guide"][index]
+
+    if user is None and (category.get("is_hidden", False) or guide.get("is_hidden", False)):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+
     return templates.TemplateResponse(
         "guide_view.html",
         {
@@ -256,6 +302,9 @@ async def guide_save(request: Request, category_id: str, index: str = Form(defau
                      title: str = Form(...), text: str = Form(...),
                      url: str = Form(default=""), url_label: str = Form(default=""),
                      show_bot_links: bool = Form(default=False),
+                     is_hidden: bool = Form(default=False),
+                     sort_order: int = Form(default=0),
+                     row_number: int = Form(default=1),
                      photo_remove: str = Form(default=""),
                      photo: UploadFile = File(default=None)):
     if _get_session_user(request) is None:
@@ -267,6 +316,9 @@ async def guide_save(request: Request, category_id: str, index: str = Form(defau
     new_guide = {
         "title": title.strip(),
         "text": text,
+        "is_hidden": is_hidden,
+        "sort_order": sort_order,
+        "row_number": row_number,
     }
     if url.strip():
         new_guide["url"] = url.strip()

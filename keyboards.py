@@ -7,34 +7,84 @@ from guides import load_guides
 
 # ---------- Кнопки главного меню (категории) ----------
 def main_menu_keyboard() -> InlineKeyboardMarkup:
-    """Главное меню со списком категорий гайдов + кнопка поиска."""
+    """Главное меню со списком видимых категорий гайдов + кнопка поиска.
+    Кнопки группируются по row_number и сортируются по sort_order."""
     guides = load_guides()
 
+    # Фильтруем скрытые категории
+    visible_cats = [
+        (cat_id, cat)
+        for cat_id, cat in guides.items()
+        if not cat.get("is_hidden", False)
+    ]
+    # Сортируем по sort_order
+    visible_cats.sort(key=lambda x: (x[1].get("sort_order", 0), x[0]))
+
+    # Группируем по row_number
+    rows_map = {}
+    for cat_id, cat in visible_cats:
+        r_num = cat.get("row_number", 1)
+        rows_map.setdefault(r_num, []).append((cat["title"], f"cat:{cat_id}"))
+
     builder = InlineKeyboardBuilder()
-    for category_id, category in guides.items():
-        builder.button(
-            text=category["title"],
-            callback_data=f"cat:{category_id}",
-        )
-    builder.button(text="🔍 Поиск", callback_data="search")
-    builder.adjust(1)
+    sorted_row_keys = sorted(rows_map.keys())
+    row_sizes = []
+    for r_num in sorted_row_keys:
+        buttons = rows_map[r_num]
+        for text, cb_data in buttons:
+            builder.button(text=text, callback_data=cb_data)
+        row_sizes.append(len(buttons))
+
+    if row_sizes:
+        builder.adjust(*row_sizes)
+
+    # Кнопку поиска добавляем отдельным рядом
+    search_builder = InlineKeyboardBuilder()
+    search_builder.button(text="🔍 Поиск", callback_data="search")
+    builder.attach(search_builder)
+
     return builder.as_markup()
 
 
 # ---------- Кнопки конкретной категории (список гайдов) ----------
 def category_keyboard(category_id: str) -> InlineKeyboardMarkup:
-    """Список гайдов внутри категории + кнопка «Назад»."""
+    """Список видимых гайдов внутри категории + кнопка «Назад».
+    Кнопки группируются по row_number и сортируются по sort_order."""
     guides = load_guides()
+    cat_data = guides.get(category_id, {})
+    all_guides = cat_data.get("guide", [])
+
+    # Собираем видимые гайды с их реальным оригинальным индексом
+    visible_guides = [
+        (idx, g)
+        for idx, g in enumerate(all_guides)
+        if not g.get("is_hidden", False)
+    ]
+    # Сортируем по sort_order
+    visible_guides.sort(key=lambda x: (x[1].get("sort_order", 0), x[0]))
+
+    rows_map = {}
+    for orig_idx, g in visible_guides:
+        r_num = g.get("row_number", 1)
+        rows_map.setdefault(r_num, []).append((g["title"], f"guide:{category_id}:{orig_idx}"))
 
     builder = InlineKeyboardBuilder()
-    for index in range(len(guides[category_id]["guide"])):
-        guide = guides[category_id]["guide"][index]
-        builder.button(
-            text=guide["title"],
-            callback_data=f"guide:{category_id}:{index}",
-        )
-    builder.button(text="◀️ Назад", callback_data="menu")
-    builder.adjust(1)
+    sorted_row_keys = sorted(rows_map.keys())
+    row_sizes = []
+    for r_num in sorted_row_keys:
+        buttons = rows_map[r_num]
+        for text, cb_data in buttons:
+            builder.button(text=text, callback_data=cb_data)
+        row_sizes.append(len(buttons))
+
+    if row_sizes:
+        builder.adjust(*row_sizes)
+
+    # Кнопку «Назад» добавляем отдельным рядом
+    back_builder = InlineKeyboardBuilder()
+    back_builder.button(text="◀️ Назад", callback_data="menu")
+    builder.attach(back_builder)
+
     return builder.as_markup()
 
 

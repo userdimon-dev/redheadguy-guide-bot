@@ -60,10 +60,25 @@
         </div>
     </div>
 
-    <div class="form-group form-group--check">
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="sort_order">Порядок (sort_order)</label>
+            <input type="number" id="sort_order" name="sort_order" value="{{ guide.get('sort_order', 0) }}">
+        </div>
+        <div class="form-group">
+            <label for="row_number">Номер ряда (row_number)</label>
+            <input type="number" id="row_number" name="row_number" value="{{ guide.get('row_number', 1) }}" min="1">
+        </div>
+    </div>
+
+    <div class="form-group form-group--check" style="display: flex; gap: 20px; flex-wrap: wrap;">
         <label>
             <input type="checkbox" name="show_bot_links" {% if guide.get('show_bot_links') %}checked{% endif %}>
             Показывать кнопки основного бота и дополнительных ссылок
+        </label>
+        <label style="color: #f87171;">
+            <input type="checkbox" name="is_hidden" value="true" {% if guide.get('is_hidden') %}checked{% endif %}>
+            🔒 Скрыть гайд из публичного доступа
         </label>
     </div>
 

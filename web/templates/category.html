@@ -9,10 +9,15 @@
 </div>
 
 {% if session_user %}
-<!-- Переименовать категорию (админ) -->
-<form method="post" action="/category/{{ category_id }}/rename" class="inline-form">
-    <input type="text" name="title" value="{{ category.title }}" required>
-    <button type="submit" class="btn">✏️ Переименовать</button>
+<!-- Настройки категории (название, скрытие, сетка) -->
+<form method="post" action="/category/{{ category_id }}/rename" class="inline-form" style="flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+    <input type="text" name="title" value="{{ category.title }}" required style="flex: 2; min-width: 180px;">
+    <input type="number" name="sort_order" placeholder="Порядок" value="{{ category.sort_order|default(0) }}" style="width: 80px;" title="Сортировка">
+    <input type="number" name="row_number" placeholder="Ряд" value="{{ category.row_number|default(1) }}" min="1" style="width: 70px;" title="Номер ряда">
+    <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-muted); font-size: 0.9rem;">
+        <input type="checkbox" name="is_hidden" value="true" {% if category.is_hidden %}checked{% endif %}> Скрыть
+    </label>
+    <button type="submit" class="btn">✏️ Сохранить</button>
 </form>
 
 <!-- Кнопка нового гайда (админ) -->
@@ -22,10 +27,19 @@
 <!-- Список гайдов -->
 <ul id="guide-sort" class="card-list">
     {% for guide in category.guide %}
+    {% if session_user or not guide.is_hidden %}
     <li class="card-list__item" data-id="{{ loop.index0 }}">
         {% if session_user %}<span class="drag-handle">⠿</span>{% endif %}
         <a href="{% if session_user %}/guide/{{ category_id }}/{{ loop.index0 }}{% else %}/guide/{{ category_id }}/{{ loop.index0 }}/view{% endif %}" class="category-name">
             {{ guide.title }}
+            {% if session_user %}
+                {% if guide.is_hidden %}
+                <span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">Скрыт</span>
+                {% else %}
+                <span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">Опубликован</span>
+                {% endif %}
+                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 6px;">[ряд: {{ guide.row_number|default(1) }}, пор: {{ guide.sort_order|default(0) }}]</span>
+            {% endif %}
         </a>
         {% if session_user %}
         <form method="post" action="/guide/{{ category_id }}/{{ loop.index0 }}/delete"
@@ -35,6 +49,7 @@
         </form>
         {% endif %}
     </li>
+    {% endif %}
     {% endfor %}
 </ul>
 
