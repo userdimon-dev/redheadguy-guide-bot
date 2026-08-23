@@ -1,6 +1,7 @@
-/* RedheadGuy Admin — Тёмная тема */
+/* RedheadGuy Admin — Темы (Тёмная по умолчанию, Светлая через [data-theme="light"]) */
 :root {
     --bg: #0f172a;
+    --topbar-bg: #0b1120;
     --card: #1e293b;
     --border: #334155;
     --text: #f1f5f9;
@@ -11,6 +12,21 @@
     --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     --tg-bg: #18222d;
     --tg-border: #232e3c;
+}
+
+[data-theme="light"] {
+    --bg: #f8fafc;
+    --topbar-bg: #ffffff;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --primary: #0284c7;
+    --primary-dark: #0369a1;
+    --danger: #dc2626;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --tg-bg: #ffffff;
+    --tg-border: #dbe0e6;
 }
 
 * { box-sizing: border-box; }
@@ -25,8 +41,8 @@ body {
 
 /* Шапка */
 .topbar {
-    background: #0b1120;
-    color: #fff;
+    background: var(--topbar-bg);
+    color: var(--text);
     border-bottom: 1px solid var(--border);
 }
 .topbar__inner {
@@ -37,7 +53,7 @@ body {
     justify-content: space-between;
     align-items: center;
 }
-.topbar__logo { font-size: 18px; font-weight: 700; color: #f8fafc; }
+.topbar__logo { font-size: 18px; font-weight: 700; color: var(--text); }
 .topbar__nav { display: flex; gap: 16px; }
 .topbar__link { color: #94a3b8; text-decoration: none; font-size: 14px; transition: color 0.2s; }
 .topbar__link:hover { color: #f1f5f9; }
