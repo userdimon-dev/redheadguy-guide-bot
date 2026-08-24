@@ -25,7 +25,7 @@
     --topbar-bg: #ffffff;
     --card: #ffffff;
     --border: #cbd5e1;
-    --text: #0f172a;
+    --text: #000000;
     --muted: #475569;
     --primary: #0284c7;
     --primary-dark: #0369a1;
@@ -33,12 +33,33 @@
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     --tg-bg: #ffffff;
     --tg-border: #cbd5e1;
-    --tg-title: #0f172a;
-    --tg-text: #1e293b;
+    --tg-title: #000000;
+    --tg-text: #000000;
     --tg-code-bg: #f1f5f9;
     --tg-code-color: #0369a1;
     --tg-link: #0284c7;
     --preview-bg: #f1f5f9;
+}
+
+[data-theme="light"] .telegram-card__title,
+[data-theme="light"] .telegram-card__text,
+[data-theme="light"] .telegram-card__text p,
+[data-theme="light"] .telegram-card__text span,
+[data-theme="light"] .telegram-card__text div,
+[data-theme="light"] .telegram-card__text li,
+[data-theme="light"] .telegram-card__text strong,
+[data-theme="light"] .telegram-card__text em,
+[data-theme="light"] .telegram-card__text b,
+[data-theme="light"] .telegram-card__text i,
+[data-theme="light"] .telegram-card__text u,
+[data-theme="light"] .telegram-card__text s,
+[data-theme="light"] .telegram-card__text h1,
+[data-theme="light"] .telegram-card__text h2,
+[data-theme="light"] .telegram-card__text h3,
+[data-theme="light"] .telegram-card__text h4,
+[data-theme="light"] .telegram-card__text h5,
+[data-theme="light"] .telegram-card__text h6 {
+    color: #000000 !important;
 }
 
 * { box-sizing: border-box; }
