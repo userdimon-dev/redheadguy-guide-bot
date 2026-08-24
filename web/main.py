@@ -197,11 +197,19 @@ async def category_page(request: Request, category_id: str):
     guides = load_guides()
     if category_id not in guides:
         return RedirectResponse(url="/", status_code=303)
-    category = guides[category_id]
+    category = dict(guides[category_id])
 
     # Если обычный пользователь и категория скрыта — отдаем 404/редирект
     if user is None and category.get("is_hidden", False):
         return JSONResponse({"detail": "Not found"}, status_code=404)
+
+    # Сортируем гайды внутри категории по sort_order, сохраняя исходный индекс
+    raw_guides = category.get("guide", [])
+    indexed_guides = [
+        {"orig_idx": idx, **g} for idx, g in enumerate(raw_guides)
+    ]
+    indexed_guides.sort(key=lambda x: (x.get("sort_order", 0), x["orig_idx"]))
+    category["sorted_guides"] = indexed_guides
 
     return templates.TemplateResponse(
         "category.html",
@@ -436,4 +444,56 @@ async def reorder_categories(request: Request):
     new_guides = {k: guides[k] for k in new_keys}
     backup_guides()
     save_guides(new_guides)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/category/{category_id}/update_layout")
+async def category_update_layout(request: Request, category_id: str):
+    if _get_session_user(request) is None:
+        return JSONResponse({"ok": False}, status_code=403)
+    body = await request.json()
+    guides = load_guides()
+    if category_id not in guides:
+        return JSONResponse({"ok": False}, status_code=404)
+
+    if "row_number" in body:
+        try:
+            guides[category_id]["row_number"] = int(body["row_number"])
+        except ValueError:
+            pass
+    if "sort_order" in body:
+        try:
+            guides[category_id]["sort_order"] = int(body["sort_order"])
+        except ValueError:
+            pass
+
+    backup_guides()
+    save_guides(guides)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/category/{category_id}/guide/{index}/update_layout")
+async def guide_update_layout(request: Request, category_id: str, index: int):
+    if _get_session_user(request) is None:
+        return JSONResponse({"ok": False}, status_code=403)
+    body = await request.json()
+    guides = load_guides()
+    cat = guides.get(category_id)
+    if not cat or index < 0 or index >= len(cat.get("guide", [])):
+        return JSONResponse({"ok": False}, status_code=404)
+
+    guide = cat["guide"][index]
+    if "row_number" in body:
+        try:
+            guide["row_number"] = int(body["row_number"])
+        except ValueError:
+            pass
+    if "sort_order" in body:
+        try:
+            guide["sort_order"] = int(body["sort_order"])
+        except ValueError:
+            pass
+
+    backup_guides()
+    save_guides(guides)
     return JSONResponse({"ok": True})

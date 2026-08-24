@@ -37,32 +37,53 @@
 </form>
 {% endif %}
 
-<!-- Список категорий -->
-<ul id="category-sort" class="card-list">
-    {% for category_id, category in guides.items() %}
-    <li class="card-list__item" data-id="{{ category_id }}">
-        {% if session_user %}<span class="drag-handle">⠿</span>{% endif %}
-        <a href="/category/{{ category_id }}" class="category-name">
-            {{ category.title }}
-            <span class="badge">{{ category.guide|length }}</span>
-            {% if session_user %}
-                {% if category.is_hidden %}
-                <span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">Скрыт</span>
-                {% else %}
-                <span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">Опубликован</span>
+<!-- Группировка категорий по рядам на сайте -->
+{% set rows = {} %}
+{% for cid, cat in guides.items() %}
+    {% set rnum = cat.get('row_number', 1) %}
+    {% if rnum not in rows %}
+        {% set _ = rows.update({rnum: []}) %}
+    {% endif %}
+    {% set _ = rows[rnum].append((cid, cat)) %}
+{% endfor %}
+
+<div class="grid-container">
+    {% for rnum in rows.keys()|sort %}
+    <div class="grid-row-group">
+        <div class="grid-row-group__title">Ряд {{ rnum }}</div>
+        <ul id="category-sort-row-{{ rnum }}" class="grid-row-group__items">
+            {% for category_id, category in rows[rnum] %}
+            <li class="card-list__item" data-id="{{ category_id }}">
+                {% if session_user %}<span class="drag-handle">⠿</span>{% endif %}
+                <a href="/category/{{ category_id }}" class="category-name">
+                    {{ category.title }}
+                    <span class="badge">{{ category.guide|length }}</span>
+                    {% if session_user %}
+                        {% if category.is_hidden %}
+                        <span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">Скрыт</span>
+                        {% else %}
+                        <span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">Опубликован</span>
+                        {% endif %}
+                    {% endif %}
+                </a>
+                {% if session_user %}
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem;" onclick="event.stopPropagation();">
+                    <span style="color: var(--muted);" title="Номер ряда">Ряд:</span>
+                    <input type="number" value="{{ category.row_number|default(1) }}" min="1" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateCatLayout('{{ category_id }}', 'row_number', this.value)">
+                    <span style="color: var(--muted);" title="Порядок">Пор:</span>
+                    <input type="number" value="{{ category.sort_order|default(0) }}" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateCatLayout('{{ category_id }}', 'sort_order', this.value)">
+                </div>
+                <form method="post" action="/category/{{ category_id }}/delete" class="inline-form inline-form--right"
+                      onsubmit="return confirm('Удалить категорию и все её гайды?');">
+                    <button type="submit" class="btn btn--danger">🗑️</button>
+                </form>
                 {% endif %}
-                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 6px;">[ряд: {{ category.row_number|default(1) }}, пор: {{ category.sort_order|default(0) }}]</span>
-            {% endif %}
-        </a>
-        {% if session_user %}
-        <form method="post" action="/category/{{ category_id }}/delete" class="inline-form inline-form--right"
-              onsubmit="return confirm('Удалить категорию и все её гайды?');">
-            <button type="submit" class="btn btn--danger">🗑️</button>
-        </form>
-        {% endif %}
-    </li>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
     {% endfor %}
-</ul>
+</div>
 
 {% if not guides %}
     <p class="empty">Категорий пока нет.</p>
@@ -73,21 +94,27 @@
 {% if session_user %}
 <script src="/static/js/sortable.min.js"></script>
 <script>
-    const catList = document.getElementById('category-sort');
-    if (catList) {
-        new Sortable(catList, {
+    document.querySelectorAll('[id^="category-sort-row-"]').forEach(rowEl => {
+        new Sortable(rowEl, {
             handle: '.drag-handle',
             animation: 150,
             onEnd: function(evt) {
-                const order = Array.from(catList.children).map(
-                    li => li.getAttribute('data-id')
-                );
+                const allItems = Array.from(document.querySelectorAll('.grid-row-group__items .card-list__item'));
+                const order = allItems.map(li => li.getAttribute('data-id'));
                 fetch('/reorder_categories', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({order: order})
                 });
             }
+        });
+    });
+
+    function updateCatLayout(catId, field, value) {
+        fetch('/category/' + catId + '/update_layout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({[field]: parseInt(value) || 0})
         });
     }
 </script>

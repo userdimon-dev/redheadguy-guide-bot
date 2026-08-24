@@ -12,13 +12,14 @@
     <header class="topbar">
         <div class="topbar__inner">
             <span class="topbar__logo">📚 {{ site_name }}</span>
-            <nav class="topbar__nav">
+            <nav class="topbar__nav" style="align-items: center;">
                 <a href="/" class="topbar__link">Главная</a>
                 {% if session_user %}
                     <a href="/logout" class="topbar__link topbar__link--logout">Выйти 👤{{ session_user }}</a>
                 {% else %}
                     <a href="/login" class="topbar__link">Войти 🔑</a>
                 {% endif %}
+                <button id="themeToggleBtn" class="btn" style="padding: 4px 10px; font-size: 13px; margin-left: 8px;">🌙</button>
             </nav>
         </div>
     </header>
@@ -30,6 +31,34 @@
     <footer class="footer">
         <p>{{ site_name }} — база знаний и гайды</p>
     </footer>
+
+    <script>
+        // Инициализация темы из localStorage
+        const themeBtn = document.getElementById('themeToggleBtn');
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        if (savedTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            if (themeBtn) themeBtn.textContent = '☀️';
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            if (themeBtn) themeBtn.textContent = '🌙';
+        }
+
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+                if (isLight) {
+                    document.documentElement.removeAttribute('data-theme');
+                    localStorage.setItem('theme', 'dark');
+                    themeBtn.textContent = '🌙';
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    themeBtn.textContent = '☀️';
+                }
+            });
+        }
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

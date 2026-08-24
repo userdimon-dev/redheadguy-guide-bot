@@ -1,6 +1,7 @@
-/* RedheadGuy Admin — Тёмная тема */
+/* RedheadGuy Admin — Темы (Тёмная по умолчанию, Светлая через [data-theme="light"]) */
 :root {
     --bg: #0f172a;
+    --topbar-bg: #0b1120;
     --card: #1e293b;
     --border: #334155;
     --text: #f1f5f9;
@@ -11,6 +12,33 @@
     --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     --tg-bg: #18222d;
     --tg-border: #232e3c;
+    --tg-title: #ffffff;
+    --tg-text: #e1e7ed;
+    --tg-code-bg: #10161f;
+    --tg-code-color: #38bdf8;
+    --tg-link: #64b5f6;
+    --preview-bg: #0e1621;
+}
+
+[data-theme="light"] {
+    --bg: #f8fafc;
+    --topbar-bg: #ffffff;
+    --card: #ffffff;
+    --border: #cbd5e1;
+    --text: #0f172a;
+    --muted: #475569;
+    --primary: #0284c7;
+    --primary-dark: #0369a1;
+    --danger: #dc2626;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --tg-bg: #ffffff;
+    --tg-border: #cbd5e1;
+    --tg-title: #0f172a;
+    --tg-text: #1e293b;
+    --tg-code-bg: #f1f5f9;
+    --tg-code-color: #0369a1;
+    --tg-link: #0284c7;
+    --preview-bg: #f1f5f9;
 }
 
 * { box-sizing: border-box; }
@@ -25,8 +53,8 @@ body {
 
 /* Шапка */
 .topbar {
-    background: #0b1120;
-    color: #fff;
+    background: var(--topbar-bg);
+    color: var(--text);
     border-bottom: 1px solid var(--border);
 }
 .topbar__inner {
@@ -37,7 +65,7 @@ body {
     justify-content: space-between;
     align-items: center;
 }
-.topbar__logo { font-size: 18px; font-weight: 700; color: #f8fafc; }
+.topbar__logo { font-size: 18px; font-weight: 700; color: var(--text); }
 .topbar__nav { display: flex; gap: 16px; }
 .topbar__link { color: #94a3b8; text-decoration: none; font-size: 14px; transition: color 0.2s; }
 .topbar__link:hover { color: #f1f5f9; }
@@ -45,7 +73,7 @@ body {
 .topbar__link--logout:hover { color: #f87171; }
 
 .container {
-    max-width: 960px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 24px 20px 60px;
 }
@@ -110,13 +138,18 @@ body {
 .btn--danger:hover { background: rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.5); }
 .btn--block { display: block; width: 100%; text-align: center; margin-bottom: 20px; }
 
+/* Сетка рядов (Grid layout на сайте) */
+.grid-container { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.grid-row-group { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; box-shadow: var(--shadow); }
+.grid-row-group__title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.grid-row-group__items { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; list-style: none; padding: 0; margin: 0; }
+
 /* Список карточек */
 .card-list { list-style: none; padding: 0; margin: 0 0 20px; }
 .card-list__item {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 10px;
-    margin-bottom: 8px;
     padding: 12px 16px;
     display: flex;
     align-items: center;
@@ -223,16 +256,37 @@ body {
     border-bottom: 1px solid var(--border);
     color: var(--text);
 }
-.preview-panel__body { padding: 20px; background: #0e1621; }
+.preview-panel__body { padding: 20px; background: var(--preview-bg); }
 
 .telegram-card {
-    max-width: 520px;
+    max-width: 900px;
+    width: 100%;
     margin: 0 auto;
     background: var(--tg-bg);
     border: 1px solid var(--tg-border);
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Адаптивные медиа-запросы (Desktop / Tablet / Mobile) */
+@media (min-width: 992px) {
+    .telegram-card__content { padding: 24px 28px; }
+    .telegram-card__title { font-size: 22px; }
+    .telegram-card__text { font-size: 16px; line-height: 1.6; }
+}
+
+@media (max-width: 768px) {
+    .container { padding: 16px 12px 40px; }
+    .topbar__inner { padding: 12px 14px; }
+    .topbar__logo { font-size: 16px; }
+    .stats-grid { grid-template-columns: 1fr; gap: 10px; }
+    .telegram-card { border-radius: 10px; }
+    .telegram-card__content { padding: 14px 14px; }
+    .telegram-card__title { font-size: 18px; }
+    .telegram-card__text { font-size: 14px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .grid-row-group__items { grid-template-columns: 1fr; }
 }
 .telegram-card__photo img {
     width: 100%;
@@ -246,26 +300,26 @@ body {
 .telegram-card__title {
     font-size: 17px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--tg-title);
     margin-bottom: 8px;
 }
 .telegram-card__text {
     font-size: 15px;
-    color: #e1e7ed;
+    color: var(--tg-text);
     line-height: 1.5;
 }
 .telegram-card__text p { margin: 0 0 8px; }
 .telegram-card__text pre,
 .telegram-card__text code {
-    background: #10161f;
+    background: var(--tg-code-bg);
     border-left: 3px solid var(--primary);
     padding: 8px 12px;
     border-radius: 6px;
     font-family: "Courier New", Courier, monospace;
-    color: #38bdf8;
+    color: var(--tg-code-color);
     overflow-x: auto;
 }
-.telegram-card__text a { color: #64b5f6; text-decoration: underline; }
+.telegram-card__text a { color: var(--tg-link); text-decoration: underline; }
 .telegram-card__buttons {
     padding: 0 16px 16px;
 }
