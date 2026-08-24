@@ -24,41 +24,56 @@
 <a href="/guide/{{ category_id }}/new" class="btn btn--primary btn--block">➕ Новый гайд</a>
 {% endif %}
 
-<!-- Список гайдов -->
-<ul id="guide-sort" class="card-list">
-    {% for guide in category.guide %}
+<!-- Группировка гайдов по рядам на сайте -->
+{% set g_rows = {} %}
+{% for guide in category.sorted_guides|default(category.guide) %}
     {% if session_user or not guide.is_hidden %}
-    <li class="card-list__item" data-id="{{ loop.index0 }}">
-        {% if session_user %}<span class="drag-handle">⠿</span>{% endif %}
-        <a href="{% if session_user %}/guide/{{ category_id }}/{{ loop.index0 }}{% else %}/guide/{{ category_id }}/{{ loop.index0 }}/view{% endif %}" class="category-name">
-            {{ guide.title }}
-            {% if session_user %}
-                {% if guide.is_hidden %}
-                <span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">Скрыт</span>
-                {% else %}
-                <span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">Опубликован</span>
-                {% endif %}
-            {% endif %}
-        </a>
-        {% if session_user %}
-        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem;" onclick="event.stopPropagation();">
-            <span style="color: var(--muted);" title="Номер ряда кнопок в Telegram">Ряд:</span>
-            <input type="number" value="{{ guide.row_number|default(1) }}" min="1" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateGuideLayout('{{ category_id }}', {{ loop.index0 }}, 'row_number', this.value)">
-            <span style="color: var(--muted);" title="Порядок внутри ряда">Пор:</span>
-            <input type="number" value="{{ guide.sort_order|default(0) }}" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateGuideLayout('{{ category_id }}', {{ loop.index0 }}, 'sort_order', this.value)">
-        </div>
+        {% set rnum = guide.get('row_number', 1) %}
+        {% if rnum not in g_rows %}
+            {% set _ = g_rows.update({rnum: []}) %}
         {% endif %}
-        {% if session_user %}
-        <form method="post" action="/guide/{{ category_id }}/{{ loop.index0 }}/delete"
-              class="inline-form inline-form--right"
-              onsubmit="return confirm('Удалить гайд?');">
-            <button type="submit" class="btn btn--danger">🗑️</button>
-        </form>
-        {% endif %}
-    </li>
+        {% set _ = g_rows[rnum].append(guide) %}
     {% endif %}
+{% endfor %}
+
+<div class="grid-container">
+    {% for rnum in g_rows.keys()|sort %}
+    <div class="grid-row-group">
+        <div class="grid-row-group__title">Ряд {{ rnum }}</div>
+        <ul id="guide-sort-row-{{ rnum }}" class="grid-row-group__items">
+            {% for guide in g_rows[rnum] %}
+            {% set orig_idx = guide.get('orig_idx', loop.index0) %}
+            <li class="card-list__item" data-id="{{ orig_idx }}">
+                {% if session_user %}<span class="drag-handle">⠿</span>{% endif %}
+                <a href="{% if session_user %}/guide/{{ category_id }}/{{ orig_idx }}{% else %}/guide/{{ category_id }}/{{ orig_idx }}/view{% endif %}" class="category-name">
+                    {{ guide.title }}
+                    {% if session_user %}
+                        {% if guide.is_hidden %}
+                        <span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">Скрыт</span>
+                        {% else %}
+                        <span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">Опубликован</span>
+                        {% endif %}
+                    {% endif %}
+                </a>
+                {% if session_user %}
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem;" onclick="event.stopPropagation();">
+                    <span style="color: var(--muted);" title="Номер ряда">Ряд:</span>
+                    <input type="number" value="{{ guide.row_number|default(1) }}" min="1" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateGuideLayout('{{ category_id }}', {{ orig_idx }}, 'row_number', this.value)">
+                    <span style="color: var(--muted);" title="Порядок">Пор:</span>
+                    <input type="number" value="{{ guide.sort_order|default(0) }}" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateGuideLayout('{{ category_id }}', {{ orig_idx }}, 'sort_order', this.value)">
+                </div>
+                <form method="post" action="/guide/{{ category_id }}/{{ orig_idx }}/delete"
+                      class="inline-form inline-form--right"
+                      onsubmit="return confirm('Удалить гайд?');">
+                    <button type="submit" class="btn btn--danger">🗑️</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
     {% endfor %}
-</ul>
+</div>
 
 {% if not category.guide %}
     <p class="empty">Гайдов пока нет.</p>
@@ -69,15 +84,13 @@
 {% if session_user %}
 <script src="/static/js/sortable.min.js"></script>
 <script>
-    const guideList = document.getElementById('guide-sort');
-    if (guideList) {
-        new Sortable(guideList, {
+    document.querySelectorAll('[id^="guide-sort-row-"]').forEach(rowEl => {
+        new Sortable(rowEl, {
             handle: '.drag-handle',
             animation: 150,
             onEnd: function(evt) {
-                const order = Array.from(guideList.children).map(
-                    li => parseInt(li.getAttribute('data-id'))
-                );
+                const allItems = Array.from(document.querySelectorAll('.grid-row-group__items .card-list__item'));
+                const order = allItems.map(li => parseInt(li.getAttribute('data-id')));
                 fetch('/category/{{ category_id }}/reorder', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -85,7 +98,7 @@
                 });
             }
         });
-    }
+    });
 
     function updateGuideLayout(catId, index, field, value) {
         fetch('/category/' + catId + '/guide/' + index + '/update_layout', {

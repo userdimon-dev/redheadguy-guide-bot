@@ -197,11 +197,19 @@ async def category_page(request: Request, category_id: str):
     guides = load_guides()
     if category_id not in guides:
         return RedirectResponse(url="/", status_code=303)
-    category = guides[category_id]
+    category = dict(guides[category_id])
 
     # Если обычный пользователь и категория скрыта — отдаем 404/редирект
     if user is None and category.get("is_hidden", False):
         return JSONResponse({"detail": "Not found"}, status_code=404)
+
+    # Сортируем гайды внутри категории по sort_order, сохраняя исходный индекс
+    raw_guides = category.get("guide", [])
+    indexed_guides = [
+        {"orig_idx": idx, **g} for idx, g in enumerate(raw_guides)
+    ]
+    indexed_guides.sort(key=lambda x: (x.get("sort_order", 0), x["orig_idx"]))
+    category["sorted_guides"] = indexed_guides
 
     return templates.TemplateResponse(
         "category.html",
