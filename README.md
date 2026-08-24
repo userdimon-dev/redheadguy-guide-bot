@@ -1,6 +1,6 @@
 # 🤖 RedheadGuy Guide Bot
 
-![Version](https://img.shields.io/badge/version-1.5.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.1-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-3.x-0d8b9b?style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -275,6 +275,11 @@ redheadguy-guide-bot/
 ## 🏷️ Changelog
 
 Полный журнал версий — в [CHANGELOG.md](CHANGELOG.md).
+
+### v1.5.1 (2026-08-20)
+- 🎨 Высококонтрастный чёрный шрифт для светлой темы
+- 🖥️ Адаптивная ширина гайдов для ПК (до 900px) и мобильных устройств
+- 📱 Наглядная группировка категорий и гайдов по рядам на сайте
 
 ### v1.5.0 (2026-08-20)
 - 🔒 Сокрытие категорий и гайдов из публичного доступа (`is_hidden`)
