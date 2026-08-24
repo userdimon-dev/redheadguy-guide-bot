@@ -12,21 +12,33 @@
     --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     --tg-bg: #18222d;
     --tg-border: #232e3c;
+    --tg-title: #ffffff;
+    --tg-text: #e1e7ed;
+    --tg-code-bg: #10161f;
+    --tg-code-color: #38bdf8;
+    --tg-link: #64b5f6;
+    --preview-bg: #0e1621;
 }
 
 [data-theme="light"] {
     --bg: #f8fafc;
     --topbar-bg: #ffffff;
     --card: #ffffff;
-    --border: #e2e8f0;
+    --border: #cbd5e1;
     --text: #0f172a;
-    --muted: #64748b;
+    --muted: #475569;
     --primary: #0284c7;
     --primary-dark: #0369a1;
     --danger: #dc2626;
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     --tg-bg: #ffffff;
-    --tg-border: #dbe0e6;
+    --tg-border: #cbd5e1;
+    --tg-title: #0f172a;
+    --tg-text: #1e293b;
+    --tg-code-bg: #f1f5f9;
+    --tg-code-color: #0369a1;
+    --tg-link: #0284c7;
+    --preview-bg: #f1f5f9;
 }
 
 * { box-sizing: border-box; }
@@ -244,7 +256,7 @@ body {
     border-bottom: 1px solid var(--border);
     color: var(--text);
 }
-.preview-panel__body { padding: 20px; background: #0e1621; }
+.preview-panel__body { padding: 20px; background: var(--preview-bg); }
 
 .telegram-card {
     max-width: 900px;
@@ -288,26 +300,26 @@ body {
 .telegram-card__title {
     font-size: 17px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--tg-title);
     margin-bottom: 8px;
 }
 .telegram-card__text {
     font-size: 15px;
-    color: #e1e7ed;
+    color: var(--tg-text);
     line-height: 1.5;
 }
 .telegram-card__text p { margin: 0 0 8px; }
 .telegram-card__text pre,
 .telegram-card__text code {
-    background: #10161f;
+    background: var(--tg-code-bg);
     border-left: 3px solid var(--primary);
     padding: 8px 12px;
     border-radius: 6px;
     font-family: "Courier New", Courier, monospace;
-    color: #38bdf8;
+    color: var(--tg-code-color);
     overflow-x: auto;
 }
-.telegram-card__text a { color: #64b5f6; text-decoration: underline; }
+.telegram-card__text a { color: var(--tg-link); text-decoration: underline; }
 .telegram-card__buttons {
     padding: 0 16px 16px;
 }
