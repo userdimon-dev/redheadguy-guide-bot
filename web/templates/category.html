@@ -38,9 +38,16 @@
                 {% else %}
                 <span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">Опубликован</span>
                 {% endif %}
-                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 6px;">[ряд: {{ guide.row_number|default(1) }}, пор: {{ guide.sort_order|default(0) }}]</span>
             {% endif %}
         </a>
+        {% if session_user %}
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem;" onclick="event.stopPropagation();">
+            <span style="color: var(--muted);" title="Номер ряда кнопок в Telegram">Ряд:</span>
+            <input type="number" value="{{ guide.row_number|default(1) }}" min="1" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateGuideLayout('{{ category_id }}', {{ loop.index0 }}, 'row_number', this.value)">
+            <span style="color: var(--muted);" title="Порядок внутри ряда">Пор:</span>
+            <input type="number" value="{{ guide.sort_order|default(0) }}" style="width: 50px; padding: 4px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;" onchange="updateGuideLayout('{{ category_id }}', {{ loop.index0 }}, 'sort_order', this.value)">
+        </div>
+        {% endif %}
         {% if session_user %}
         <form method="post" action="/guide/{{ category_id }}/{{ loop.index0 }}/delete"
               class="inline-form inline-form--right"
@@ -77,6 +84,14 @@
                     body: JSON.stringify({order: order})
                 });
             }
+        });
+    }
+
+    function updateGuideLayout(catId, index, field, value) {
+        fetch('/category/' + catId + '/guide/' + index + '/update_layout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({[field]: parseInt(value) || 0})
         });
     }
 </script>
