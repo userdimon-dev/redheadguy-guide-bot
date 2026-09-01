@@ -100,12 +100,62 @@ async def auth_telegram_webapp(request: Request, response: Response):
     init_data = body.get("initData", "")
     validated = verify_telegram_webapp_init_data(init_data)
     if not validated:
-        return JSONResponse({"ok": False, "error": "Invalid Telegram Mini App initData or non-admin user"}, status_code=401)
+        return JSONResponse({"authenticated": False, "isAdmin": False, "error": "Invalid Telegram Mini App initData"}, status_code=401)
 
     user_obj = validated.get("user_obj", {})
     user_id = user_obj.get("id")
-    token = _set_session_cookie(response, user_id)
-    return {"ok": True, "user": user_obj, "token": token}
+    is_adm = is_admin(user_id) if user_id else False
+
+    if is_adm:
+        token = _set_session_cookie(response, user_id)
+        return {"authenticated": True, "isAdmin": True, "user": user_obj, "token": token}
+    else:
+        return {"authenticated": True, "isAdmin": False, "user": user_obj}
+
+
+@app.get("/api/guides/public")
+async def get_public_guides():
+    """Возвращает публичный список категорий и гайдов без скрытых элементов"""
+    guides = load_guides()
+    result_categories = []
+
+    sorted_categories = sorted(
+        guides.items(),
+        key=lambda x: (x[1].get("sort_order", 0), x[0])
+    )
+
+    for cid, cat in sorted_categories:
+        if cat.get("is_hidden", False):
+            continue
+
+        raw_guides = cat.get("guide", [])
+        public_guides = []
+        for idx, g in enumerate(raw_guides):
+            if g.get("is_hidden", False):
+                continue
+            public_guides.append({
+                "orig_idx": idx,
+                "title": g.get("title", ""),
+                "slug": g.get("slug") or f"guide-{idx}",
+                "summary": g.get("summary") or g.get("title", ""),
+                "text": g.get("text", ""),
+                "content": g.get("content") or g.get("text", ""),
+                "tags": g.get("tags") or [],
+                "buttons": g.get("buttons") or [],
+                "url": g.get("url"),
+                "url_label": g.get("url_label"),
+                "photo": g.get("photo"),
+            })
+
+        public_guides.sort(key=lambda x: (x.get("sort_order", 0), x["orig_idx"]))
+
+        result_categories.append({
+            "id": cid,
+            "title": cat.get("title", ""),
+            "guides": public_guides,
+        })
+
+    return {"categories": result_categories}
 
 
 @app.post("/api/auth/telegram-widget")

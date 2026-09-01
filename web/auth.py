@@ -58,7 +58,7 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict | None:
     """
     Валидирует строку initData от Telegram Mini App (@telegram-apps/sdk / window.Telegram.WebApp.initData).
     Ключ хэширования: HMAC-SHA256("WebAppData", BOT_TOKEN).
-    Возвращает dict распарсенного initData, если подпись подлинная и юзер — админ.
+    Возвращает dict распарсенного initData, если подпись подлинная.
     """
     if not BOT_TOKEN or not init_data:
         return None
@@ -91,11 +91,7 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict | None:
 
     try:
         user_obj = json.loads(user_json)
-        user_id = int(user_obj.get("id", 0))
     except (json.JSONDecodeError, ValueError, TypeError):
-        return None
-
-    if not is_admin(user_id):
         return None
 
     flat_data["user_obj"] = user_obj
