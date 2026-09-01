@@ -9,6 +9,7 @@ import {
   Sun,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Smartphone,
   MessageSquare,
   Bold,
@@ -17,11 +18,11 @@ import {
   Code,
   Tag as TagIcon,
   X,
-  Copy,
   Check,
   Search,
   Lock,
-  ExternalLink
+  ExternalLink,
+  Menu
 } from 'lucide-react';
 
 interface InlineButton {
@@ -82,12 +83,39 @@ declare global {
     Telegram?: {
       WebApp?: {
         initData?: string;
+        expand?: () => void;
         openTelegramLink?: (url: string) => void;
         openLink?: (url: string) => void;
       };
     };
     onTelegramAuth?: (user: unknown) => void;
   }
+}
+
+// Convert Markdown/HTML into Telegram-safe HTML format with code block support
+function renderFormattedContent(text: string = '') {
+  if (!text) return { __html: '' };
+
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Markdown Bold, Italic, Code
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-[#121417] text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-[#2A2E35]">$1</code>');
+
+  // Convert HTML entity tags back for supported markup
+  html = html
+    .replace(/&lt;b&gt;/gi, '<strong>').replace(/&lt;\/b&gt;/gi, '</strong>')
+    .replace(/&lt;strong&gt;/gi, '<strong>').replace(/&lt;\/strong&gt;/gi, '</strong>')
+    .replace(/&lt;i&gt;/gi, '<em>').replace(/&lt;\/i&gt;/gi, '</em>')
+    .replace(/&lt;code&gt;/gi, '<code class="bg-[#121417] text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-[#2A2E35]">').replace(/&lt;\/code&gt;/gi, '</code>')
+    .replace(/&lt;pre&gt;/gi, '<pre class="bg-[#121417] text-emerald-400 font-mono p-3 rounded-xl border border-[#2A2E35] my-2 overflow-x-auto">').replace(/&lt;\/pre&gt;/gi, '</pre>')
+    .replace(/\n/g, '<br/>');
+
+  return { __html: html };
 }
 
 export function App() {
@@ -110,8 +138,11 @@ export function App() {
   const [activeGuideIdx, setActiveGuideIdx] = useState<number | null>(null);
 
   // Public Viewer State
+  const [selectedPublicCategory, setSelectedPublicCategory] = useState<PublicCategory | null>(null);
   const [selectedPublicGuide, setSelectedPublicGuide] = useState<GuideItem | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Theme & Preview Mode
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -121,7 +152,6 @@ export function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [autoSaved, setAutoSaved] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [copiedCode, setCopiedCode] = useState(false);
 
   // New Category Modal
   const [showCatModal, setShowCatModal] = useState(false);
@@ -147,6 +177,11 @@ export function App() {
 
   // App Initialization & Role Routing
   useEffect(() => {
+    // Expand Telegram Mini App viewport if available
+    if (window.Telegram?.WebApp?.expand) {
+      window.Telegram.WebApp.expand();
+    }
+
     fetch('/api/config')
       .then(res => res.json())
       .then(data => {
@@ -235,10 +270,18 @@ export function App() {
     fetch('/api/guides/public')
       .then(res => res.json())
       .then(data => {
-        const pubCats = data.categories || [];
+        const pubCats: PublicCategory[] = data.categories || [];
         setPublicCategories(pubCats);
-        if (pubCats.length > 0 && pubCats[0].guides.length > 0) {
-          setSelectedPublicGuide(pubCats[0].guides[0]);
+
+        const exp: Record<string, boolean> = {};
+        pubCats.forEach(c => exp[c.id] = true);
+        setExpandedCategories(exp);
+
+        if (pubCats.length > 0) {
+          setSelectedPublicCategory(pubCats[0]);
+          if (pubCats[0].guides.length > 0) {
+            setSelectedPublicGuide(pubCats[0].guides[0]);
+          }
         }
       });
   };
@@ -438,6 +481,10 @@ export function App() {
     }
   };
 
+  const toggleCategoryExpand = (catId: string) => {
+    setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#121417] text-slate-100 flex items-center justify-center font-sans">
@@ -460,8 +507,17 @@ export function App() {
       )}
 
       {/* Top Header Navigation */}
-      <header className="border-b border-[#2A2E35] bg-[#1A1D21] px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+      <header className="border-b border-[#2A2E35] bg-[#1A1D21] px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
+          {!isAdmin && (
+            <button
+              onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
+              className="md:hidden p-2 rounded-lg border border-[#2A2E35] bg-[#121417] text-slate-300"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
+
           <img src="/api/logo" alt="Logo" className="w-8 h-8 rounded-lg border border-[#2A2E35] object-cover" />
           <div>
             <h1 className="font-extrabold text-sm tracking-wide text-white flex items-center gap-2">
@@ -803,28 +859,10 @@ export function App() {
                       ))}
                     </div>
 
-                    <div className="text-xs text-slate-300 leading-relaxed space-y-2 font-sans border-t border-[#2A2E35] pt-2">
-                      {guideContent.split('\n').map((line, lIdx) => {
-                        if (line.startsWith('```')) {
-                          return (
-                            <div key={lIdx} className="bg-[#1A1D21] p-2 rounded border border-[#2A2E35] font-mono text-[10px] text-emerald-400 flex justify-between items-center">
-                              <code>{line.replace(/```/g, '') || 'code block'}</code>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(line.replace(/```/g, ''));
-                                  setCopiedCode(true);
-                                  setTimeout(() => setCopiedCode(false), 2000);
-                                }}
-                                className="text-slate-400 hover:text-white"
-                              >
-                                {copiedCode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                              </button>
-                            </div>
-                          );
-                        }
-                        return <p key={lIdx}>{line}</p>;
-                      })}
-                    </div>
+                    <div
+                      className="text-xs text-slate-300 leading-relaxed space-y-2 font-sans border-t border-[#2A2E35] pt-2"
+                      dangerouslySetInnerHTML={renderFormattedContent(guideContent)}
+                    />
 
                     <div className="space-y-1.5 pt-3">
                       {guideRows.map((row, rIdx) => (
@@ -869,108 +907,145 @@ export function App() {
           </aside>
         </div>
       ) : (
-        /* RENDER MODE B/C: PUBLIC KNOWLEDGE BASE READER (Regular User / Mini App / Guest) */
-        <main className="max-w-4xl mx-auto w-full p-4 md:p-6 space-y-6 flex-1">
-          {/* Search Bar & Category Chips */}
-          <div className="space-y-4">
+        /* RENDER MODE B/C: PUBLIC DOC-STYLE KNOWLEDGE BASE READER */
+        <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full overflow-hidden relative">
+          {/* Mobile Drawer Backdrop */}
+          {mobileDrawerOpen && (
+            <div
+              onClick={() => setMobileDrawerOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
+            />
+          )}
+
+          {/* Left Navigation Sidebar (Desktop & Mobile Drawer) */}
+          <aside className={`
+            fixed md:relative top-0 left-0 bottom-0 z-40 md:z-auto
+            w-80 border-r border-[#2A2E35] bg-[#1A1D21] p-4 flex flex-col gap-4
+            transition-transform duration-200 ease-in-out
+            ${mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          `}>
+            {/* Search Bar */}
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Поиск по базе знаний..."
-                className="w-full bg-[#1A1D21] border border-[#2A2E35] rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-[#FF5500] transition-colors"
+                placeholder="Поиск по статьям..."
+                className="w-full bg-[#121417] border border-[#2A2E35] rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-[#FF5500]"
               />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {publicCategories.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    if (cat.guides.length > 0) {
-                      setSelectedPublicGuide(cat.guides[0]);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border ${
-                    selectedPublicGuide && cat.guides.some(g => g.orig_idx === selectedPublicGuide.orig_idx)
-                      ? 'bg-[#FF5500]/10 border-[#FF5500] text-[#FF5500]'
-                      : 'bg-[#1A1D21] border-[#2A2E35] text-slate-300 hover:border-slate-600'
-                  }`}
-                >
-                  {cat.title}
-                </button>
-              ))}
-            </div>
-          </div>
+            {/* Accordion Category Tree */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {publicCategories.map(cat => {
+                const isExp = expandedCategories[cat.id] ?? true;
+                const filteredGuides = cat.guides.filter(g =>
+                  !searchQuery || g.title.toLowerCase().includes(searchQuery.toLowerCase()) || (g.tags && g.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())))
+                );
 
-          {/* Article Viewer Card */}
-          {selectedPublicGuide ? (
-            <div className="bg-[#1A1D21] border border-[#2A2E35] rounded-2xl p-6 space-y-6 shadow-xl">
-              <div className="border-b border-[#2A2E35] pb-4 space-y-2">
-                <h2 className="text-xl font-bold text-white tracking-tight">{selectedPublicGuide.title}</h2>
+                if (searchQuery && filteredGuides.length === 0) return null;
+
+                return (
+                  <div key={cat.id} className="space-y-1">
+                    <button
+                      onClick={() => toggleCategoryExpand(cat.id)}
+                      className="w-full flex items-center justify-between p-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-[#121417] transition-colors"
+                    >
+                      <span className="truncate flex items-center gap-2">
+                        📁 {cat.title}
+                      </span>
+                      <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isExp ? 'rotate-90' : ''}`} />
+                    </button>
+
+                    {isExp && (
+                      <div className="pl-3 space-y-0.5 border-l border-[#2A2E35] ml-2">
+                        {filteredGuides.map(g => {
+                          const isSel = selectedPublicGuide?.orig_idx === g.orig_idx && selectedPublicCategory?.id === cat.id;
+                          return (
+                            <button
+                              key={g.orig_idx}
+                              onClick={() => {
+                                setSelectedPublicCategory(cat);
+                                setSelectedPublicGuide(g);
+                                setMobileDrawerOpen(false);
+                              }}
+                              className={`w-full text-left p-2 rounded-lg text-xs transition-colors flex items-center gap-2 ${
+                                isSel
+                                  ? 'bg-[#FF5500]/10 text-[#FF5500] font-bold border border-[#FF5500]/30'
+                                  : 'text-slate-400 hover:bg-[#121417] hover:text-slate-200'
+                              }`}
+                            >
+                              <span className="truncate">📄 {g.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+
+          {/* Main Article Content Area */}
+          <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-[#121417]">
+            {selectedPublicGuide ? (
+              <div className="max-w-3xl mx-auto space-y-6">
+                {/* Category Breadcrumb */}
+                <div className="text-xs text-[#FF5500] font-semibold uppercase tracking-wider flex items-center gap-2">
+                  <span>{selectedPublicCategory?.title || 'База знаний'}</span>
+                  <span>/</span>
+                  <span className="text-slate-400 font-mono text-[11px]">{selectedPublicGuide.slug || 'article'}</span>
+                </div>
+
+                {/* Article Header */}
+                <h1 className="text-2xl font-extrabold text-white tracking-tight">{selectedPublicGuide.title}</h1>
+
                 {selectedPublicGuide.tags && selectedPublicGuide.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {selectedPublicGuide.tags.map(t => (
-                      <span key={t} className="text-[10px] bg-[#2A2E35] text-slate-300 font-semibold px-2 py-0.5 rounded-md">
+                      <span key={t} className="text-[10px] bg-[#1A1D21] border border-[#2A2E35] text-[#FF5500] font-semibold px-2.5 py-0.5 rounded-md">
                         #{t}
                       </span>
                     ))}
                   </div>
                 )}
-              </div>
 
-              {/* Formatted Markdown Body */}
-              <div className="text-sm text-slate-200 leading-relaxed space-y-3 font-sans">
-                {selectedPublicGuide.content?.split('\n').map((line, lIdx) => {
-                  if (line.startsWith('```')) {
-                    return (
-                      <div key={lIdx} className="bg-[#121417] p-3 rounded-xl border border-[#2A2E35] font-mono text-xs text-emerald-400 flex justify-between items-center my-2">
-                        <code>{line.replace(/```/g, '') || 'code block'}</code>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(line.replace(/```/g, ''));
-                            setCopiedCode(true);
-                            setTimeout(() => setCopiedCode(false), 2000);
-                          }}
-                          className="text-slate-400 hover:text-white p-1"
-                        >
-                          {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                        </button>
+                {/* Rich Content Render (Clean HTML / Markdown Formatting) */}
+                <div
+                  className="text-sm text-slate-200 leading-relaxed space-y-3 font-sans border-t border-[#2A2E35] pt-6"
+                  dangerouslySetInnerHTML={renderFormattedContent(selectedPublicGuide.content || selectedPublicGuide.text)}
+                />
+
+                {/* Clean Interactive Action Buttons (NO Admin Row Markers) */}
+                {selectedPublicGuide.buttons && selectedPublicGuide.buttons.length > 0 && (
+                  <div className="space-y-2 border-t border-[#2A2E35] pt-6">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Быстрые действия</span>
+                    {selectedPublicGuide.buttons.map((row, rIdx) => (
+                      <div key={rIdx} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.buttons.length || 1}, minmax(0, 1fr))` }}>
+                        {row.buttons.map((btn, bIdx) => (
+                          <button
+                            key={bIdx}
+                            onClick={() => handlePublicButtonClick(btn)}
+                            className="bg-[#FF5500] hover:bg-[#E04B00] text-white text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-[#FF5500]/10"
+                          >
+                            {btn.text}
+                            <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                          </button>
+                        ))}
                       </div>
-                    );
-                  }
-                  return <p key={lIdx}>{line}</p>;
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Clean Interactive Action Buttons (NO Admin Row Markers) */}
-              {selectedPublicGuide.buttons && selectedPublicGuide.buttons.length > 0 && (
-                <div className="space-y-2 border-t border-[#2A2E35] pt-4">
-                  {selectedPublicGuide.buttons.map((row, rIdx) => (
-                    <div key={rIdx} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.buttons.length || 1}, minmax(0, 1fr))` }}>
-                      {row.buttons.map((btn, bIdx) => (
-                        <button
-                          key={bIdx}
-                          onClick={() => handlePublicButtonClick(btn)}
-                          className="bg-[#FF5500] hover:bg-[#E04B00] text-white text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-[#FF5500]/10"
-                        >
-                          {btn.text}
-                          <ExternalLink className="w-3.5 h-3.5 opacity-80" />
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-16 bg-[#1A1D21] border border-[#2A2E35] rounded-2xl text-slate-400 text-xs">
-              Выберите категорию или статью из списка.
-            </div>
-          )}
-        </main>
+            ) : (
+              <div className="text-center py-20 text-slate-500 text-xs">
+                Выберите статью из меню слева.
+              </div>
+            )}
+          </main>
+        </div>
       )}
 
       {/* Telegram Admin Login Modal */}
