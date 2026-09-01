@@ -572,6 +572,12 @@ if os.path.exists(FRONTEND_DIST_DIR):
         # Исключаем служебные эндпоинты
         if full_path.startswith("api/") or full_path.startswith("media/"):
             return JSONResponse({"error": "Not found"}, status_code=404)
+
+        # Проверяем, существует ли запрашиваемый статический файл (favicon.svg, manifest.json и т.д.)
+        target_file = os.path.join(FRONTEND_DIST_DIR, full_path)
+        if full_path and os.path.isfile(target_file):
+            return FileResponse(target_file)
+
         index_file = os.path.join(FRONTEND_DIST_DIR, "index.html")
         if os.path.exists(index_file):
             return FileResponse(index_file)
