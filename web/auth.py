@@ -18,9 +18,8 @@ _MAX_AGE = 86400  # 24 часа
 
 def verify_telegram_auth(data: dict) -> bool:
     """
-    Проверяет подпись Telegram Login Widget.
-    Если передан Telegram ID админа напрямую из формы входа в локальной админке —
-    выполняем валидацию администратора.
+    Проверяет подлинность подписи Telegram Login Widget через HMAC-SHA256 подпись.
+    Только авторизованные администраторы с валидной подписью от Telegram получат доступ.
     """
     if not BOT_TOKEN:
         return False
@@ -33,22 +32,24 @@ def verify_telegram_auth(data: dict) -> bool:
     if not is_admin(user_id):
         return False
 
-    # Если передан полноценный hash от виджета — проверяем подпись hmac
-    if "hash" in data and data["hash"] != "admin_direct":
-        received_hash = data["hash"]
-        try:
-            auth_date = int(data.get("auth_date", 0))
-            if auth_date < time.time() - _MAX_AGE:
-                return False
-        except (ValueError, TypeError):
-            return False
+    if "hash" not in data:
+        return False
 
-        fields = sorted(k for k in data.keys() if k != "hash")
-        data_check_string = "\n".join(f"{k}={data[k]}" for k in fields)
-        secret_key = hashlib.sha256(BOT_TOKEN.encode()).digest()
-        calculated = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(calculated, received_hash):
+    received_hash = data["hash"]
+
+    try:
+        auth_date = int(data.get("auth_date", 0))
+        if auth_date < time.time() - _MAX_AGE:
             return False
+    except (ValueError, TypeError):
+        return False
+
+    fields = sorted(k for k in data.keys() if k != "hash")
+    data_check_string = "\n".join(f"{k}={data[k]}" for k in fields)
+    secret_key = hashlib.sha256(BOT_TOKEN.encode()).digest()
+    calculated = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(calculated, received_hash):
+        return False
 
     return True
 

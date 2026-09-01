@@ -25,6 +25,7 @@ declare global {
         initData?: string;
       };
     };
+    onTelegramAuth?: (user: unknown) => void;
   }
 }
 
@@ -86,8 +87,40 @@ export function App() {
   const [newCatHidden, setNewCatHidden] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
-  // Login Widget input state
-  const [loginTelegramId, setLoginTelegramId] = useState('');
+  // Render Telegram Widget dynamically on login view
+  useEffect(() => {
+    if (view === 'login' && siteConfig.bot_username) {
+      window.onTelegramAuth = (user: unknown) => {
+        fetch('/api/auth/telegram-widget', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            setSiteConfig(prev => ({ ...prev, is_admin: true, user_id: data.user.id }));
+            setView('dashboard');
+          } else {
+            alert('Не удалось авторизоваться: вы не являетесь администратором');
+          }
+        });
+      };
+
+      const container = document.getElementById('telegram-widget-container');
+      if (container) {
+        container.innerHTML = '';
+        const script = document.createElement('script');
+        script.src = 'https://telegram.org/js/telegram-widget.js?22';
+        script.setAttribute('data-telegram-login', siteConfig.bot_username);
+        script.setAttribute('data-size', 'large');
+        script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+        script.setAttribute('data-request-access', 'write');
+        script.async = true;
+        container.appendChild(script);
+      }
+    }
+  }, [view, siteConfig.bot_username]);
 
   // Guide Edit Form state
   const [editGuideTitle, setEditGuideTitle] = useState('');
@@ -298,7 +331,7 @@ export function App() {
                 {siteConfig.site_name}
                 <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#FF5500]/20 text-[#FF5500]">SPA</span>
               </div>
-              <div className="text-xs text-slate-400">Guide Management Panel</div>
+              <div className="text-xs text-slate-400">Панель управления гайдами</div>
             </div>
           </div>
 
@@ -330,13 +363,13 @@ export function App() {
                 </button>
               </div>
             ) : (
-              <a
-                href="/login"
+              <button
+                onClick={() => setView('login')}
                 className="px-3 py-1.5 rounded-lg bg-[#FF5500] hover:bg-[#E04B00] text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                Login
-              </a>
+                Логин
+              </button>
             )}
           </div>
         </div>
@@ -349,57 +382,25 @@ export function App() {
           <div className="max-w-md mx-auto bg-[#1A1D21] border border-[#2A2E35] p-6 rounded-xl space-y-6 text-center">
             <h2 className="text-xl font-bold text-slate-100 flex items-center justify-center gap-2">
               <LogIn className="w-5 h-5 text-[#FF5500]" />
-              Admin Login
+              Вход для администратора
             </h2>
             <p className="text-xs text-slate-400">
-              Enter through Telegram Mini App inside Telegram, or authorize using your Admin Telegram ID.
+              Войдите с помощью виджета Telegram авторизации или откройте панель в Telegram Mini App.
             </p>
 
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                if (!loginTelegramId) return;
-                fetch('/api/auth/telegram-widget', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ id: loginTelegramId, hash: 'admin_direct', auth_date: String(Math.floor(Date.now() / 1000)) })
-                })
-                .then(res => res.json())
-                .then(data => {
-                  if (data.ok) {
-                    setSiteConfig(prev => ({ ...prev, is_admin: true, user_id: Number(loginTelegramId) }));
-                    setView('dashboard');
-                  } else {
-                    alert('Invalid Telegram ID or non-admin user');
-                  }
-                });
-              }}
-              className="space-y-3 text-left"
-            >
-              <div>
-                <label className="text-xs text-slate-300 font-medium">Telegram Admin ID</label>
-                <input
-                  type="text"
-                  value={loginTelegramId}
-                  onChange={e => setLoginTelegramId(e.target.value)}
-                  placeholder="e.g. 123456789"
-                  required
-                  className="w-full bg-[#121417] border border-[#2A2E35] text-sm rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-[#FF5500] mt-1"
-                />
+            <div className="py-4 flex justify-center bg-[#121417] p-4 rounded-xl border border-[#2A2E35]">
+              <div id="telegram-widget-container">
+                <p className="text-xs text-slate-400">
+                  Загрузка виджета входа Telegram...
+                </p>
               </div>
-              <button
-                type="submit"
-                className="w-full bg-[#FF5500] hover:bg-[#E04B00] text-white font-medium text-sm py-2 rounded-lg transition-colors"
-              >
-                Sign In as Admin
-              </button>
-            </form>
+            </div>
 
             <button
               onClick={() => setView('dashboard')}
               className="text-xs text-slate-400 hover:text-slate-200"
             >
-              Back to Dashboard
+              ← Вернуться на главную
             </button>
           </div>
         )}
@@ -415,7 +416,7 @@ export function App() {
                 </div>
                 <div>
                   <div className="text-2xl font-extrabold text-slate-100">{stats.categories}</div>
-                  <div className="text-xs text-slate-400">Total Categories</div>
+                  <div className="text-xs text-slate-400">Всего категорий</div>
                 </div>
               </div>
 
@@ -425,7 +426,7 @@ export function App() {
                 </div>
                 <div>
                   <div className="text-2xl font-extrabold text-slate-100">{stats.guides}</div>
-                  <div className="text-xs text-slate-400">Published Guides</div>
+                  <div className="text-xs text-slate-400">Опубликовано гайдов</div>
                 </div>
               </div>
 
@@ -435,7 +436,7 @@ export function App() {
                 </div>
                 <div>
                   <div className="text-2xl font-extrabold text-slate-100">{stats.users}</div>
-                  <div className="text-xs text-slate-400">Bot Users</div>
+                  <div className="text-xs text-slate-400">Пользователей бота</div>
                 </div>
               </div>
             </div>
@@ -445,12 +446,12 @@ export function App() {
               <div className="bg-[#1A1D21] border border-[#2A2E35] p-5 rounded-xl space-y-4">
                 <div className="text-sm font-bold text-slate-200 flex items-center gap-2">
                   <Plus className="w-4 h-4 text-[#FF5500]" />
-                  Add New Category
+                  Добавить новую категорию
                 </div>
                 <form onSubmit={handleAddCategory} className="grid grid-cols-1 md:grid-cols-6 gap-3">
                   <input
                     type="text"
-                    placeholder="id (e.g. windows)"
+                    placeholder="id (напр. windows)"
                     value={newCatId}
                     onChange={e => setNewCatId(e.target.value)}
                     required
@@ -458,14 +459,14 @@ export function App() {
                   />
                   <input
                     type="text"
-                    placeholder="Title (🖥️ Windows Setup)"
+                    placeholder="Название (🖥️ Настройка Windows)"
                     value={newCatTitle}
                     onChange={e => setNewCatTitle(e.target.value)}
                     required
                     className="md:col-span-2 bg-[#121417] border border-[#2A2E35] text-sm rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-[#FF5500]"
                   />
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Row:</span>
+                    <span className="text-xs text-slate-400">Ряд:</span>
                     <input
                       type="number"
                       value={newCatRow}
@@ -475,7 +476,7 @@ export function App() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Sort:</span>
+                    <span className="text-xs text-slate-400">Пор:</span>
                     <input
                       type="number"
                       value={newCatSort}
@@ -491,14 +492,14 @@ export function App() {
                         onChange={e => setNewCatHidden(e.target.checked)}
                         className="accent-[#FF5500]"
                       />
-                      Hide
+                      Скрыть
                     </label>
                   </div>
                   <button
                     type="submit"
                     className="bg-[#FF5500] hover:bg-[#E04B00] text-white font-medium text-sm rounded-lg px-4 py-2 transition-colors flex items-center justify-center gap-1.5"
                   >
-                    <Plus className="w-4 h-4" /> Add
+                    <Plus className="w-4 h-4" /> Добавить
                   </button>
                 </form>
               </div>
@@ -509,7 +510,7 @@ export function App() {
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-[#1A1D21] border border-[#2A2E35] p-6 rounded-xl max-w-md w-full space-y-4">
                   <div className="text-lg font-bold text-slate-100 flex items-center justify-between">
-                    <span>Edit Category <code className="text-[#FF5500]">{editingCatId}</code></span>
+                    <span>Редактирование категории <code className="text-[#FF5500]">{editingCatId}</code></span>
                     <button onClick={() => setEditingCatId(null)} className="text-slate-400 hover:text-slate-200">✕</button>
                   </div>
 
@@ -535,7 +536,7 @@ export function App() {
                     className="space-y-3"
                   >
                     <div>
-                      <label className="text-xs text-slate-300">Title</label>
+                      <label className="text-xs text-slate-300">Название</label>
                       <input
                         type="text"
                         value={newCatTitle}
@@ -546,7 +547,7 @@ export function App() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-slate-300">Row Number</label>
+                        <label className="text-xs text-slate-300">Номер ряда</label>
                         <input
                           type="number"
                           value={newCatRow}
@@ -556,7 +557,7 @@ export function App() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-slate-300">Sort Order</label>
+                        <label className="text-xs text-slate-300">Порядок сортировки</label>
                         <input
                           type="number"
                           value={newCatSort}
@@ -572,7 +573,7 @@ export function App() {
                         onChange={e => setNewCatHidden(e.target.checked)}
                         className="accent-red-500"
                       />
-                      Hide Category from Public
+                      Скрыть категорию от пользователей
                     </label>
 
                     <div className="flex gap-2 pt-2">
@@ -580,14 +581,14 @@ export function App() {
                         type="submit"
                         className="flex-1 bg-[#FF5500] hover:bg-[#E04B00] text-white font-medium text-sm py-2 rounded-lg transition-colors"
                       >
-                        Save Changes
+                        Сохранить изменения
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingCatId(null)}
                         className="px-4 bg-[#2A2E35] hover:bg-slate-700 text-slate-200 font-medium text-sm py-2 rounded-lg transition-colors"
                       >
-                        Cancel
+                        Отмена
                       </button>
                     </div>
                   </form>
@@ -598,19 +599,19 @@ export function App() {
             {/* Category Rows List */}
             <div className="space-y-6">
               <div className="text-lg font-bold text-slate-100 flex items-center justify-between">
-                <span>Categories Grid</span>
-                <span className="text-xs text-slate-400 font-normal">Grouped by Row Number</span>
+                <span>Сетка категорий</span>
+                <span className="text-xs text-slate-400 font-normal">Сгруппировано по рядам</span>
               </div>
 
               {Object.keys(categoryRows).length === 0 ? (
                 <div className="text-center py-12 text-slate-500 bg-[#1A1D21] border border-[#2A2E35] rounded-xl">
-                  No categories found.
+                  Категории не найдены.
                 </div>
               ) : (
                 Object.keys(categoryRows).sort((a, b) => Number(a) - Number(b)).map(rowNum => (
                   <div key={rowNum} className="bg-[#1A1D21] border border-[#2A2E35] rounded-xl p-4 space-y-3">
                     <div className="text-xs font-bold text-[#FF5500] uppercase tracking-wider">
-                      Row {rowNum}
+                      Ряд {rowNum}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {categoryRows[Number(rowNum)].map(cat => (
@@ -633,7 +634,7 @@ export function App() {
                             </span>
                             {cat.is_hidden && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
-                                <EyeOff className="w-3 h-3" /> Hidden
+                                <EyeOff className="w-3 h-3" /> Скрыт
                               </span>
                             )}
                           </div>
@@ -649,14 +650,14 @@ export function App() {
                                   setNewCatHidden(cat.is_hidden || false);
                                 }}
                                 className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-                                title="Edit Category"
+                                title="Редактировать категорию"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteCategory(cat.id)}
                                 className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                title="Delete Category"
+                                title="Удалить категорию"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -675,7 +676,7 @@ export function App() {
               <div className="bg-[#1A1D21] border border-[#2A2E35] p-5 rounded-xl space-y-3">
                 <div className="text-sm font-bold text-slate-200 flex items-center gap-2">
                   <Terminal className="w-4 h-4 text-emerald-400" />
-                  Recent User Analytics Activity
+                  Последняя активность пользователей (Аналитика)
                 </div>
                 <div className="bg-[#121417] p-3 rounded-lg font-mono text-xs text-slate-300 max-h-48 overflow-y-auto space-y-1">
                   {recentLogs.map((logLine, i) => (
@@ -697,7 +698,7 @@ export function App() {
                 onClick={() => setView('dashboard')}
                 className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+                <ArrowLeft className="w-4 h-4" /> ← Вернуться на главную
               </button>
 
               {siteConfig.is_admin && (
@@ -705,7 +706,7 @@ export function App() {
                   onClick={() => openGuideEditor(categoryDetail.id)}
                   className="bg-[#FF5500] hover:bg-[#E04B00] text-white text-xs font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors"
                 >
-                  <Plus className="w-4 h-4" /> Add New Guide
+                  <Plus className="w-4 h-4" /> Добавить гайд
                 </button>
               )}
             </div>
@@ -715,7 +716,7 @@ export function App() {
                 {categoryDetail.title}
                 {categoryDetail.is_hidden && (
                   <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                    Hidden Category
+                    Скрытая категория
                   </span>
                 )}
               </h1>
@@ -726,13 +727,13 @@ export function App() {
             <div className="space-y-6">
               {Object.keys(guideRows).length === 0 ? (
                 <div className="text-center py-12 text-slate-500 bg-[#1A1D21] border border-[#2A2E35] rounded-xl">
-                  No guides in this category.
+                  В этой категории пока нет гайдов.
                 </div>
               ) : (
                 Object.keys(guideRows).sort((a, b) => Number(a) - Number(b)).map(rowNum => (
                   <div key={rowNum} className="bg-[#1A1D21] border border-[#2A2E35] rounded-xl p-4 space-y-3">
                     <div className="text-xs font-bold text-[#FF5500] uppercase tracking-wider">
-                      Row {rowNum}
+                      Ряд {rowNum}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {guideRows[Number(rowNum)].map(guide => (
@@ -751,7 +752,7 @@ export function App() {
                               {guide.title}
                               {guide.is_hidden && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                                  Hidden
+                                  Скрыт
                                 </span>
                               )}
                             </div>
@@ -767,14 +768,14 @@ export function App() {
                               <button
                                 onClick={() => openGuideEditor(categoryDetail.id, guide, guide.orig_idx)}
                                 className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-                                title="Edit Guide"
+                                title="Редактировать гайд"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteGuide(categoryDetail.id, guide.orig_idx)}
                                 className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                                title="Delete Guide"
+                                title="Удалить гайд"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -799,7 +800,7 @@ export function App() {
                 onClick={() => setView('category')}
                 className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors"
               >
-                <ArrowLeft className="w-4 h-4" /> Back to Category
+                <ArrowLeft className="w-4 h-4" /> ← Вернуться к категории
               </button>
 
               {/* Telegram Card Component */}
@@ -808,7 +809,7 @@ export function App() {
                   <div className="rounded-xl overflow-hidden max-h-80 border border-[#232E3C]">
                     <img
                       src={`/${currentGuide.photo}`}
-                      alt="Guide photo"
+                      alt="Фото гайда"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -830,7 +831,7 @@ export function App() {
                     rel="noreferrer"
                     className="block w-full text-center bg-[#229ED9] hover:bg-[#1B86B9] text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
                   >
-                    {currentGuide.url_label || '🔗 Open Link'}
+                    {currentGuide.url_label || '🔗 Открыть ссылку'}
                   </a>
                 )}
               </div>
@@ -845,41 +846,41 @@ export function App() {
               onClick={() => setView('category')}
               className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" /> Cancel & Back
+              <ArrowLeft className="w-4 h-4" /> Отмена и назад
             </button>
 
             <form onSubmit={handleSaveGuide} className="bg-[#1A1D21] border border-[#2A2E35] p-6 rounded-xl space-y-6">
               <div className="text-lg font-bold text-slate-100">
-                {selectedGuideIdx !== null ? 'Edit Guide' : 'Create New Guide'}
+                {selectedGuideIdx !== null ? 'Редактирование гайда' : 'Создание нового гайда'}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Title</label>
+                <label className="text-xs font-semibold text-slate-300">Заголовок</label>
                 <input
                   type="text"
                   value={editGuideTitle}
                   onChange={e => setEditGuideTitle(e.target.value)}
                   required
-                  placeholder="e.g. 🖥️ How to connect on Windows"
+                  placeholder="напр. 🖥️ Инструкция по настройке Windows"
                   className="w-full bg-[#121417] border border-[#2A2E35] rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-[#FF5500]"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Guide HTML Content</label>
+                <label className="text-xs font-semibold text-slate-300">HTML Содержимое гайда</label>
                 <textarea
                   value={editGuideText}
                   onChange={e => setEditGuideText(e.target.value)}
                   required
                   rows={8}
-                  placeholder="HTML instructions..."
+                  placeholder="Инструкция в формате HTML..."
                   className="w-full bg-[#121417] border border-[#2A2E35] rounded-lg p-3 text-sm font-mono text-slate-200 focus:outline-none focus:border-[#FF5500]"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300">Button URL (Optional)</label>
+                  <label className="text-xs font-semibold text-slate-300">URL кнопки (Опционально)</label>
                   <input
                     type="text"
                     value={editGuideUrl}
@@ -889,12 +890,12 @@ export function App() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300">Button Label</label>
+                  <label className="text-xs font-semibold text-slate-300">Текст кнопки</label>
                   <input
                     type="text"
                     value={editGuideUrlLabel}
                     onChange={e => setEditGuideUrlLabel(e.target.value)}
-                    placeholder="🔗 Open"
+                    placeholder="🔗 Открыть"
                     className="w-full bg-[#121417] border border-[#2A2E35] rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-[#FF5500]"
                   />
                 </div>
@@ -902,7 +903,7 @@ export function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300">Row Number</label>
+                  <label className="text-xs font-semibold text-slate-300">Номер ряда</label>
                   <input
                     type="number"
                     value={editGuideRow}
@@ -912,7 +913,7 @@ export function App() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300">Sort Order</label>
+                  <label className="text-xs font-semibold text-slate-300">Порядок сортировки</label>
                   <input
                     type="number"
                     value={editGuideSort}
@@ -920,6 +921,55 @@ export function App() {
                     className="w-full bg-[#121417] border border-[#2A2E35] rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-[#FF5500]"
                   />
                 </div>
+              </div>
+
+              {/* Photo Upload & Photo Removal Controls */}
+              <div className="bg-[#121417] p-4 rounded-lg border border-[#2A2E35] space-y-3">
+                <label className="text-xs font-semibold text-slate-300 block">
+                  Изображение гайда (опционально)
+                </label>
+
+                {(() => {
+                  const currG = categoryDetail?.guides.find(g => g.orig_idx === selectedGuideIdx);
+                  if (currG?.photo && !editGuidePhotoRemove) {
+                    return (
+                      <div className="flex items-center gap-3 bg-[#1A1D21] p-2.5 rounded-lg border border-[#2A2E35]">
+                        <img
+                          src={`/${currG.photo}`}
+                          alt="Текущее фото"
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                        <div className="flex-1 text-xs text-slate-300">
+                          <div>Текущее фото: <span className="font-mono text-slate-400">{currG.photo}</span></div>
+                        </div>
+                        <label className="flex items-center gap-1.5 text-xs text-red-400 cursor-pointer font-medium">
+                          <input
+                            type="checkbox"
+                            checked={editGuidePhotoRemove}
+                            onChange={e => setEditGuidePhotoRemove(e.target.checked)}
+                            className="accent-red-500"
+                          />
+                          Удалить фото
+                        </label>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      setEditGuidePhotoFile(e.target.files[0]);
+                      setEditGuidePhotoRemove(false);
+                    } else {
+                      setEditGuidePhotoFile(null);
+                    }
+                  }}
+                  className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[#FF5500] file:text-white hover:file:bg-[#E04B00] cursor-pointer"
+                />
               </div>
 
               <div className="flex items-center gap-6">
@@ -930,7 +980,7 @@ export function App() {
                     onChange={e => setEditGuideShowBotLinks(e.target.checked)}
                     className="accent-[#FF5500]"
                   />
-                  Show Main Bot Links
+                  Показывать основные кнопки бота
                 </label>
                 <label className="flex items-center gap-2 text-xs text-red-400 cursor-pointer">
                   <input
@@ -939,7 +989,7 @@ export function App() {
                     onChange={e => setEditGuideHidden(e.target.checked)}
                     className="accent-red-500"
                   />
-                  Hide Guide (Draft)
+                  Скрыть гайд (Черновик)
                 </label>
               </div>
 
@@ -947,7 +997,7 @@ export function App() {
                 type="submit"
                 className="bg-[#FF5500] hover:bg-[#E04B00] text-white font-medium text-sm px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2"
               >
-                <Save className="w-4 h-4" /> Save Guide
+                <Save className="w-4 h-4" /> Сохранить гайд
               </button>
             </form>
           </div>
