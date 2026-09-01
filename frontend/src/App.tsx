@@ -357,6 +357,38 @@ export function App() {
     showToast('Порядок категорий обновлен');
   };
 
+  // Reorder Guide/Article within active category
+  const moveGuide = (gIndex: number, direction: 'up' | 'down') => {
+    if (!categoryDetail || !activeCatId) return;
+
+    const currentGuides = [...categoryDetail.guides];
+    const targetIdx = direction === 'up' ? gIndex - 1 : gIndex + 1;
+    if (targetIdx < 0 || targetIdx >= currentGuides.length) return;
+
+    const temp = currentGuides[gIndex];
+    currentGuides[gIndex] = currentGuides[targetIdx];
+    currentGuides[targetIdx] = temp;
+
+    // Build array of original indices in the new target order
+    const orderIndices = currentGuides.map(g => g.orig_idx);
+
+    fetch('/api/guides/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category_id: activeCatId, order: orderIndices })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok) {
+        showToast('Порядок статей обновлен');
+        loadPublicGuides();
+        fetch(`/api/category/${activeCatId}`)
+          .then(res => res.json())
+          .then(catData => setCategoryDetail(catData));
+      }
+    });
+  };
+
   // Add Category
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -658,14 +690,30 @@ export function App() {
                         <div
                           key={g.orig_idx}
                           onClick={() => selectGuide(g, gIdx)}
-                          className={`p-2 rounded-md text-[11px] flex items-center justify-between cursor-pointer transition-colors ${
+                          className={`p-2 rounded-md text-[11px] flex items-center justify-between cursor-pointer transition-colors group/g ${
                             activeGuideIdx === g.orig_idx
                               ? 'bg-[#FF5500] text-white font-medium'
                               : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                           }`}
                         >
                           <span className="truncate">📄 {g.title}</span>
-                          {g.is_hidden && <span className="text-[9px] text-red-400 font-mono">[скрыт]</span>}
+                          <div className="flex items-center gap-1">
+                            {g.is_hidden && <span className="text-[9px] text-red-400 font-mono">[скрыт]</span>}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); moveGuide(gIdx, 'up'); }}
+                              className="p-0.5 hover:text-white text-slate-400 opacity-60 group-hover/g:opacity-100"
+                              title="Переместить выше"
+                            >
+                              <ChevronUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); moveGuide(gIdx, 'down'); }}
+                              className="p-0.5 hover:text-white text-slate-400 opacity-60 group-hover/g:opacity-100"
+                              title="Переместить ниже"
+                            >
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                       <button

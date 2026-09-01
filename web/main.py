@@ -390,6 +390,37 @@ async def api_get_guide(request: Request, category_id: str, index: int):
     }
 
 
+@app.post("/api/guides/reorder")
+async def api_reorder_guides(request: Request):
+    if _get_session_user(request) is None:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    body = await request.json()
+    category_id = body.get("category_id")
+    order = body.get("order")  # list of orig_idx
+
+    guides = load_guides()
+    if not category_id or category_id not in guides or not isinstance(order, list):
+        return JSONResponse({"error": "Invalid request payload"}, status_code=400)
+
+    current_guides = guides[category_id].get("guide", [])
+    if len(order) != len(current_guides):
+        return JSONResponse({"error": "Order array length mismatch"}, status_code=400)
+
+    try:
+        new_guides_list = [current_guides[i] for i in order]
+        # Update sort_order explicitly based on new index
+        for new_idx, g in enumerate(new_guides_list):
+            g["sort_order"] = new_idx
+
+        guides[category_id]["guide"] = new_guides_list
+        backup_guides()
+        save_guides(guides)
+        return {"ok": True}
+    except Exception as e:
+        return JSONResponse({"error": f"Failed to reorder: {str(e)}"}, status_code=500)
+
+
 @app.post("/api/guides/{category_id}/save")
 async def api_save_guide(
     request: Request,
