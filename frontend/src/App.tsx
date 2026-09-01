@@ -369,7 +369,6 @@ export function App() {
     currentGuides[gIndex] = currentGuides[targetIdx];
     currentGuides[targetIdx] = temp;
 
-    // Build array of original indices in the new target order
     const orderIndices = currentGuides.map(g => g.orig_idx);
 
     fetch('/api/guides/reorder', {
@@ -542,7 +541,7 @@ export function App() {
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#121417] text-slate-100' : 'bg-slate-100 text-slate-900'} font-sans flex flex-col antialiased`}>
+    <div className={`h-screen ${theme === 'dark' ? 'bg-[#121417] text-slate-100' : 'bg-slate-100 text-slate-900'} font-sans flex flex-col overflow-hidden antialiased`}>
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 bg-[#FF5500] text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2 animate-bounce">
@@ -551,8 +550,8 @@ export function App() {
         </div>
       )}
 
-      {/* Top Header Navigation (Responsive for 360px viewports) */}
-      <header className="border-b border-[#2A2E35] bg-[#1A1D21] px-3 md:px-6 py-2.5 flex items-center justify-between sticky top-0 z-40 gap-2">
+      {/* Top Header Navigation (Fixed Height) */}
+      <header className="border-b border-[#2A2E35] bg-[#1A1D21] px-3 md:px-6 py-2.5 flex items-center justify-between z-40 gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {activeViewMode === 'public' && (
             <button
@@ -637,7 +636,7 @@ export function App() {
 
       {/* RENDER MODE A: ADMIN STUDIO (isAdmin === true && activeViewMode === 'studio') */}
       {isAdmin && activeViewMode === 'studio' ? (
-        <div className="flex-1 grid grid-cols-12 overflow-hidden">
+        <div className="flex-1 grid grid-cols-12 overflow-hidden h-full">
           {/* COLUMN 1: Category Tree & Navigator (Left) */}
           <aside className="col-span-3 border-r border-[#2A2E35] bg-[#1A1D21] p-4 flex flex-col gap-4 overflow-y-auto">
             <div className="flex items-center justify-between">
@@ -664,10 +663,10 @@ export function App() {
                         : 'bg-[#121417] border-[#2A2E35] text-slate-300 hover:border-slate-600'
                     }`}
                   >
-                    <span className="truncate flex items-center gap-2">
+                    <span className="break-words leading-snug flex-1 flex items-start gap-2">
                       📁 {cat.title}
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); moveCategory(idx, 'up'); }}
                         className="p-1 hover:text-white text-slate-500"
@@ -696,8 +695,8 @@ export function App() {
                               : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                           }`}
                         >
-                          <span className="truncate">📄 {g.title}</span>
-                          <div className="flex items-center gap-1">
+                          <span className="break-words leading-snug flex-1">📄 {g.title}</span>
+                          <div className="flex items-center gap-1 shrink-0">
                             {g.is_hidden && <span className="text-[9px] text-red-400 font-mono">[скрыт]</span>}
                             <button
                               onClick={(e) => { e.stopPropagation(); moveGuide(gIdx, 'up'); }}
@@ -730,7 +729,7 @@ export function App() {
           </aside>
 
           {/* COLUMN 2: Guide & Interactive Keyboard Editor (Center) */}
-          <main className="col-span-5 p-6 overflow-y-auto space-y-6 bg-[#121417]">
+          <main className="col-span-5 p-6 overflow-y-auto space-y-6 bg-[#121417] h-full">
             <div className="space-y-4">
               <h2 className="text-base font-bold text-slate-100 flex items-center gap-2 border-b border-[#2A2E35] pb-3">
                 <FileText className="w-4 h-4 text-[#FF5500]" />
@@ -899,8 +898,8 @@ export function App() {
           </main>
 
           {/* COLUMN 3: Dual-Mode Smartphone Live Preview (Right Sidebar) */}
-          <aside className="col-span-4 border-l border-[#2A2E35] bg-[#1A1D21] p-6 flex flex-col items-center justify-start gap-4 overflow-y-auto">
-            <div className="flex bg-[#121417] p-1 rounded-xl border border-[#2A2E35] w-full">
+          <aside className="col-span-4 border-l border-[#2A2E35] bg-[#1A1D21] p-6 flex flex-col items-center justify-start gap-4 overflow-y-auto h-full">
+            <div className="flex bg-[#121417] p-1 rounded-xl border border-[#2A2E35] w-full shrink-0">
               <button
                 onClick={() => setPreviewMode('miniapp')}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors ${
@@ -920,7 +919,7 @@ export function App() {
             </div>
 
             {/* Smartphone Framed Mockup */}
-            <div className="w-[320px] h-[580px] bg-[#121417] border-4 border-[#2A2E35] rounded-[36px] shadow-2xl p-4 flex flex-col justify-between overflow-hidden relative">
+            <div className="w-[320px] h-[580px] bg-[#121417] border-4 border-[#2A2E35] rounded-[36px] shadow-2xl p-4 flex flex-col justify-between overflow-hidden relative shrink-0">
               <div className="w-28 h-4 bg-[#2A2E35] rounded-b-xl mx-auto absolute top-0 left-1/2 -translate-x-1/2 z-20" />
 
               <div className="flex-1 mt-4 overflow-y-auto space-y-3 pt-2 pr-1">
@@ -991,8 +990,8 @@ export function App() {
           </aside>
         </div>
       ) : (
-        /* RENDER MODE B/C: PUBLIC DOC-STYLE KNOWLEDGE BASE READER */
-        <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full overflow-hidden relative">
+        /* RENDER MODE B/C: PUBLIC DOC-STYLE KNOWLEDGE BASE READER (Independent Scroll Architecture) */
+        <div className="flex-1 flex overflow-hidden relative h-full">
           {/* Mobile Drawer Backdrop */}
           {mobileDrawerOpen && (
             <div
@@ -1001,27 +1000,29 @@ export function App() {
             />
           )}
 
-          {/* Left Navigation Sidebar (Desktop & Mobile Drawer) */}
+          {/* Left Navigation Sidebar (Independent Fixed Width & Scroll) */}
           <aside className={`
             fixed md:relative top-0 left-0 bottom-0 z-40 md:z-auto
-            w-80 border-r border-[#2A2E35] bg-[#1A1D21] p-4 flex flex-col gap-4
+            w-72 md:w-80 border-r border-[#2A2E35] bg-[#1A1D21] flex flex-col h-full shrink-0
             transition-transform duration-200 ease-in-out
             ${mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}>
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Поиск по статьям..."
-                className="w-full bg-[#121417] border border-[#2A2E35] rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-[#FF5500]"
-              />
+            {/* Fixed Search Bar Header Section */}
+            <div className="p-4 border-b border-[#2A2E35] shrink-0">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Поиск по статьям..."
+                  className="w-full bg-[#121417] border border-[#2A2E35] rounded-xl pl-9 pr-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-[#FF5500]"
+                />
+              </div>
             </div>
 
-            {/* Accordion Category Tree */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {/* Scrollable Tree Container */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {publicCategories.map(cat => {
                 const isExp = expandedCategories[cat.id] ?? true;
                 const filteredGuides = cat.guides.filter(g =>
@@ -1034,16 +1035,15 @@ export function App() {
                   <div key={cat.id} className="space-y-1">
                     <button
                       onClick={() => toggleCategoryExpand(cat.id)}
-                      className="w-full flex items-center justify-between p-2 rounded-lg text-xs font-bold text-slate-300 hover:bg-[#121417] transition-colors"
+                      className="w-full flex items-start justify-between p-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-[#2A2E35]/50 transition-colors text-left gap-2"
                     >
-                      <span className="truncate flex items-center gap-2">
-                        📁 {cat.title}
-                      </span>
-                      <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isExp ? 'rotate-90' : ''}`} />
+                      <span className="shrink-0 text-sm">📁</span>
+                      <span className="flex-1 break-words leading-snug">{cat.title}</span>
+                      <ChevronRight className={`w-3.5 h-3.5 shrink-0 mt-0.5 transition-transform ${isExp ? 'rotate-90' : ''}`} />
                     </button>
 
                     {isExp && (
-                      <div className="pl-3 space-y-0.5 border-l border-[#2A2E35] ml-2">
+                      <div className="pl-3 space-y-1 border-l border-[#2A2E35] ml-2">
                         {filteredGuides.map(g => {
                           const isSel = selectedPublicGuide?.orig_idx === g.orig_idx && selectedPublicCategory?.id === cat.id;
                           return (
@@ -1054,13 +1054,14 @@ export function App() {
                                 setSelectedPublicGuide(g);
                                 setMobileDrawerOpen(false);
                               }}
-                              className={`w-full text-left p-2 rounded-lg text-xs transition-colors flex items-center gap-2 ${
+                              className={`w-full flex items-start gap-2 p-2 rounded-lg text-xs text-left transition-colors ${
                                 isSel
                                   ? 'bg-[#FF5500]/10 text-[#FF5500] font-bold border border-[#FF5500]/30'
-                                  : 'text-slate-400 hover:bg-[#121417] hover:text-slate-200'
+                                  : 'text-slate-300 hover:bg-[#2A2E35]/70 hover:text-slate-100'
                               }`}
                             >
-                              <span className="truncate">📄 {g.title}</span>
+                              <span className="shrink-0 text-xs mt-0.5">📄</span>
+                              <span className="flex-1 break-words leading-snug">{g.title}</span>
                             </button>
                           );
                         })}
@@ -1072,10 +1073,10 @@ export function App() {
             </div>
           </aside>
 
-          {/* Main Article Content Area */}
-          <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-[#121417]">
+          {/* Main Article Content Area (Independent Vertical Scroll) */}
+          <main className="flex-1 h-full overflow-y-auto p-4 md:p-8 bg-[#121417]">
             {selectedPublicGuide ? (
-              <div className="max-w-3xl mx-auto space-y-6 pt-2">
+              <div className="max-w-4xl mx-auto space-y-6 pt-2">
                 {/* Category Breadcrumb */}
                 <div className="text-xs text-[#FF5500] font-semibold uppercase tracking-wider flex items-center gap-2">
                   <span>{selectedPublicCategory?.title || 'База знаний'}</span>
@@ -1084,7 +1085,7 @@ export function App() {
                 </div>
 
                 {/* Article Header */}
-                <h1 className="text-2xl font-extrabold text-white tracking-tight">{selectedPublicGuide.title}</h1>
+                <h1 className="text-2xl font-extrabold text-white tracking-tight break-words">{selectedPublicGuide.title}</h1>
 
                 {selectedPublicGuide.tags && selectedPublicGuide.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
