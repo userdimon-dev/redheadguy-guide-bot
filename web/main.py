@@ -396,10 +396,33 @@ async def api_reorder_guides(request: Request):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
     body = await request.json()
+    guides = load_guides()
+
+    # Поддержка сохранения порядка всей иерархии категорий
+    if "categories" in body and isinstance(body["categories"], list):
+        try:
+            for cat_idx, cat_item in enumerate(body["categories"]):
+                cid = cat_item.get("id")
+                if cid and cid in guides:
+                    guides[cid]["sort_order"] = cat_idx
+                    if "order" in cat_item and isinstance(cat_item["order"], list):
+                        curr_g = guides[cid].get("guide", [])
+                        order_list = cat_item["order"]
+                        if len(order_list) == len(curr_g):
+                            new_g = [curr_g[i] for i in order_list]
+                            for g_idx, g in enumerate(new_g):
+                                g["sort_order"] = g_idx
+                            guides[cid]["guide"] = new_g
+            backup_guides()
+            save_guides(guides)
+            return {"ok": True}
+        except Exception as e:
+            return JSONResponse({"error": f"Failed to reorder hierarchy: {str(e)}"}, status_code=500)
+
+    # Поддержка сохранения порядка отдельной категории
     category_id = body.get("category_id")
     order = body.get("order")  # list of orig_idx
 
-    guides = load_guides()
     if not category_id or category_id not in guides or not isinstance(order, list):
         return JSONResponse({"error": "Invalid request payload"}, status_code=400)
 
@@ -409,7 +432,6 @@ async def api_reorder_guides(request: Request):
 
     try:
         new_guides_list = [current_guides[i] for i in order]
-        # Update sort_order explicitly based on new index
         for new_idx, g in enumerate(new_guides_list):
             g["sort_order"] = new_idx
 

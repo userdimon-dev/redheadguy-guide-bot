@@ -354,7 +354,20 @@ export function App() {
 
     newCats.forEach((c, idx) => c.sort_order = idx);
     setCategories(newCats);
-    showToast('Порядок категорий обновлен');
+
+    // Persist new category order immediately
+    fetch('/api/guides/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories: newCats.map((c, i) => ({ id: c.id, sort_order: i })) })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok) {
+        showToast('Порядок категорий сохранен!');
+        loadPublicGuides();
+      }
+    });
   };
 
   // Reorder Guide/Article within active category
@@ -440,8 +453,15 @@ export function App() {
     .then(res => res.json())
     .then(data => {
       if (data.ok) {
+        // Also persist full category order on publish
+        fetch('/api/guides/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categories: categories.map((c, i) => ({ id: c.id, sort_order: i })) })
+        }).catch(() => {});
+
         setAutoSaved(true);
-        showToast('Все изменения сохранены');
+        showToast('Порядок разделов и статей успешно опубликован!');
         loadPublicGuides();
         fetch(`/api/category/${activeCatId}`)
           .then(res => res.json())
