@@ -45,7 +45,7 @@ def test_count_stats(monkeypatch, tmp_path):
     assert stats["users"] == 0
 
 
-def test_public_access_routes(monkeypatch):
+def test_public_access_api_routes(monkeypatch):
     client = TestClient(app)
 
     mock_guides = {
@@ -64,30 +64,34 @@ def test_public_access_routes(monkeypatch):
     }
     monkeypatch.setattr("web.main.load_guides", lambda: mock_guides)
 
-    # GET / should be accessible without session (200 OK)
-    resp_dashboard = client.get("/")
-    assert resp_dashboard.status_code == 200
-    assert "Category 1" in resp_dashboard.text
-    assert "Hidden Category" not in resp_dashboard.text
+    # GET /api/categories should be 200
+    resp_cats = client.get("/api/categories")
+    assert resp_cats.status_code == 200
+    cats_list = resp_cats.json()["categories"]
+    assert any(c["id"] == "cat1" for c in cats_list)
+    assert not any(c["id"] == "cat_hidden" for c in cats_list)
 
-    # GET /category/cat1 should be 200
-    resp_cat = client.get("/category/cat1")
+    # GET /api/category/cat1 should be 200
+    resp_cat = client.get("/api/category/cat1")
     assert resp_cat.status_code == 200
+    cat_data = resp_cat.json()
+    assert cat_data["title"] == "Category 1"
+    assert len(cat_data["guides"]) == 1
+    assert cat_data["guides"][0]["title"] == "Guide 1"
 
-    # GET hidden category should return 404 for unauthenticated user
-    resp_cat_hidden = client.get("/category/cat_hidden")
+    # GET hidden category should return 404
+    resp_cat_hidden = client.get("/api/category/cat_hidden")
     assert resp_cat_hidden.status_code == 404
 
-    # GET /guide/cat1/0/view should be 200
-    resp_guide = client.get("/guide/cat1/0/view")
+    # GET /api/guides/cat1/0 should be 200
+    resp_guide = client.get("/api/guides/cat1/0")
     assert resp_guide.status_code == 200
-    assert "Guide 1" in resp_guide.text
+    assert resp_guide.json()["guide"]["title"] == "Guide 1"
 
     # GET hidden guide should return 404
-    resp_guide_hidden = client.get("/guide/cat1/1/view")
+    resp_guide_hidden = client.get("/api/guides/cat1/1")
     assert resp_guide_hidden.status_code == 404
 
-    # POST /category/add without session should redirect to /login (303)
-    resp_add = client.post("/category/add", data={"category_id": "test", "title": "Test"}, follow_redirects=False)
-    assert resp_add.status_code == 303
-    assert resp_add.headers["location"] == "/login"
+    # POST /api/categories without session should return 401
+    resp_add = client.post("/api/categories", json={"id": "test", "title": "Test"})
+    assert resp_add.status_code == 401

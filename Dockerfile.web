@@ -1,21 +1,21 @@
-# Образ для веб-редактора (FastAPI)
-FROM python:3.12-slim
+# Stage 1: Build Frontend SPA Application
+FROM node:22-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
 
+# Stage 2: Serve FastAPI App & Compiled Static Assets
+FROM python:3.12-slim
 WORKDIR /app
 
-# Копируем web-зависимости и общий requirements
 COPY web/requirements.txt /tmp/requirements-web.txt
 RUN pip install --no-cache-dir -r /tmp/requirements-web.txt
 
-# Копируем исходники проекта (нужны config.py, web/, guides и т.д.)
 COPY . .
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
-# Веб-редактор должен иметь доступ к тем же файлам (data/, config.py)
-# Точка входа — uvicorn из директории /app
-WORKDIR /app
-
-# Открываем порт 8000
 EXPOSE 8000
 
-# Запуск web-приложения
 CMD ["uvicorn", "web.main:app", "--host", "0.0.0.0", "--port", "8000"]
