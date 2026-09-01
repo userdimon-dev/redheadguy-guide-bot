@@ -22,7 +22,7 @@ def get_version() -> str:
     except Exception:
         return "unknown"
 
-BOT_VERSION = get_version()
+BOT_VERSION = "2.0.0"
 BOT_NAME = "RedHeadGuy Guide Bot"
 
 # ---------- Токен бота (обязательно) ----------
@@ -38,8 +38,15 @@ def is_admin(user_id: int) -> bool:
     """Проверяет, является ли user_id администратором."""
     return user_id in ADMIN_ID
 
-# ---------- Ссылки (опционально, настраиваются через .env) ----------
+# ---------- Ссылки и Настройки Веб-панели ----------
+BOT_USERNAME = os.getenv("BOT_USERNAME", "redheadguy_bot")
+WEB_SITE_NAME = os.getenv("WEB_SITE_NAME", "RedheadGuy Admin")
+
 MAIN_BOT_URL = os.getenv("MAIN_BOT_URL", "https://t.me/redheadguy_bot")
+CHANNEL_URL = os.getenv("CHANNEL_URL", "")   # канал новостей
+CABINET_URL = os.getenv("CABINET_URL", "")   # личный кабинет
+SUPPORT_URL = os.getenv("SUPPORT_URL", "")   # поддержка
+SITE_URL    = os.getenv("SITE_URL", "")      # официальный сайт
 
 # ---------- Telegram Mini App & Web Panel ----------
 WEB_APP_URL = os.getenv("WEB_APP_URL", "https://redheadguide.redheadguy.ru")
@@ -54,12 +61,6 @@ DISCLAIMER_BUTTON_TEXT = os.getenv("DISCLAIMER_BUTTON_TEXT", "✅ Принять
 # ---------- Custom Branding ----------
 BRAND_NAME = os.getenv("BRAND_NAME", "REDHEADGUY PRIVATE")
 DEFAULT_LOGO_PATH = os.getenv("DEFAULT_LOGO_PATH", "media/logo.png")
-
-# Дополнительные ссылки (если заданы в .env — выводим кнопки, если нет — пропускаем)
-CHANNEL_URL = os.getenv("CHANNEL_URL", "")   # канал новостей
-CABINET_URL = os.getenv("CABINET_URL", "")   # личный кабинет
-SUPPORT_URL = os.getenv("SUPPORT_URL", "")   # поддержка
-SITE_URL    = os.getenv("SITE_URL", "")      # официальный сайт
 
 
 def get_extra_links() -> list[tuple[str, str]]:

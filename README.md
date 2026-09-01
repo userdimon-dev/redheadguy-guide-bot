@@ -1,6 +1,6 @@
 # 🤖 RedheadGuy Guide Bot
 
-![Version](https://img.shields.io/badge/version-1.5.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.0.0-blue?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![aiogram](https://img.shields.io/badge/aiogram-3.x-0d8b9b?style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -275,6 +275,14 @@ redheadguy-guide-bot/
 ## 🏷️ Changelog
 
 Полный журнал версий — в [CHANGELOG.md](CHANGELOG.md).
+
+### v2.0.0 (2026-09-01)
+- 🖥️ **3-колончатая веб-студия**: React + Vite + Tailwind CSS SPA с русской локализацией.
+- 📱 **Дуальное живое превью**: просмотр гайдов в режиме Telegram Mini App и сообщений бота.
+- 🎛️ **Визуальный конструктор клавиатур**: гибкое управление рядами и типами кнопок.
+- ⚠️ **Onboarding & Disclaimer**: обязательное подтверждение дисклеймера при старте.
+- 🖼️ **Динамический бренд-дизайн**: загрузка кастомных логотипов и имя бренда.
+- 🛠️ **Интерактивный скрипт установки**: `./install.sh` для быстрого развертывания и бэкапов.
 
 ### v1.5.1 (2026-08-20)
 - 🎨 Высококонтрастный чёрный шрифт для светлой темы
