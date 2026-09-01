@@ -22,7 +22,9 @@ import {
   Search,
   Lock,
   ExternalLink,
-  Menu
+  Menu,
+  Wrench,
+  Eye
 } from 'lucide-react';
 
 interface InlineButton {
@@ -83,6 +85,7 @@ declare global {
     Telegram?: {
       WebApp?: {
         initData?: string;
+        ready?: () => void;
         expand?: () => void;
         openTelegramLink?: (url: string) => void;
         openLink?: (url: string) => void;
@@ -92,28 +95,30 @@ declare global {
   }
 }
 
-// Convert Markdown/HTML into Telegram-safe HTML format with code block support
-function renderFormattedContent(text: string = '') {
+// Convert HTML / Quill.js / Markdown content into clean, safe formatted HTML
+function renderCleanHtmlContent(text: string = '') {
   if (!text) return { __html: '' };
 
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  let html = text;
 
-  // Markdown Bold, Italic, Code
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  html = html.replace(/`([^`]+)`/g, '<code class="bg-[#121417] text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-[#2A2E35]">$1</code>');
+  // Clean Quill.js list helpers (<span class="ql-ui" contenteditable="false"></span>)
+  html = html.replace(/<span\s+class="ql-ui"[^>]*>.*?<\/span>/gi, '');
 
-  // Convert HTML entity tags back for supported markup
-  html = html
-    .replace(/&lt;b&gt;/gi, '<strong>').replace(/&lt;\/b&gt;/gi, '</strong>')
-    .replace(/&lt;strong&gt;/gi, '<strong>').replace(/&lt;\/strong&gt;/gi, '</strong>')
-    .replace(/&lt;i&gt;/gi, '<em>').replace(/&lt;\/i&gt;/gi, '</em>')
-    .replace(/&lt;code&gt;/gi, '<code class="bg-[#121417] text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-[#2A2E35]">').replace(/&lt;\/code&gt;/gi, '</code>')
-    .replace(/&lt;pre&gt;/gi, '<pre class="bg-[#121417] text-emerald-400 font-mono p-3 rounded-xl border border-[#2A2E35] my-2 overflow-x-auto">').replace(/&lt;\/pre&gt;/gi, '</pre>')
-    .replace(/\n/g, '<br/>');
+  // Convert Quill <li data-list="bullet"> to <ul><li>
+  html = html.replace(/<li\s+data-list="bullet"[^>]*>(.*?)<\/li>/gi, '<ul class="list-disc pl-5 my-1"><li>$1</li></ul>');
+  html = html.replace(/<li\s+data-list="ordered"[^>]*>(.*?)<\/li>/gi, '<ol class="list-decimal pl-5 my-1"><li>$1</li></ol>');
+
+  // If text is raw Markdown without HTML tags, apply basic Markdown rules
+  if (!/<[a-z][\s\S]*>/i.test(html)) {
+    html = html
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code class="bg-[#121417] text-emerald-400 font-mono px-1.5 py-0.5 rounded border border-[#2A2E35]">$1</code>')
+      .replace(/\n/g, '<br/>');
+  }
 
   return { __html: html };
 }
@@ -129,6 +134,7 @@ export function App() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [activeViewMode, setActiveViewMode] = useState<'studio' | 'public'>('public');
 
   // Categories & Guides state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -170,6 +176,8 @@ export function App() {
   ]);
   const [guideIsHidden, setGuideIsHidden] = useState(false);
 
+  const isInsideTMA = Boolean(window.Telegram?.WebApp?.initData);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -177,9 +185,10 @@ export function App() {
 
   // App Initialization & Role Routing
   useEffect(() => {
-    // Expand Telegram Mini App viewport if available
-    if (window.Telegram?.WebApp?.expand) {
-      window.Telegram.WebApp.expand();
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      if (tg.ready) tg.ready();
+      if (tg.expand) tg.expand();
     }
 
     fetch('/api/config')
@@ -188,23 +197,26 @@ export function App() {
         setSiteConfig(data);
         if (data.is_admin) {
           setIsAdmin(true);
+          setActiveViewMode('studio');
         }
       });
 
     // Check Telegram Mini App initData
-    if (window.Telegram?.WebApp?.initData) {
+    if (tg?.initData) {
       fetch('/api/auth/telegram-webapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: window.Telegram.WebApp.initData })
+        body: JSON.stringify({ initData: tg.initData })
       })
       .then(res => res.json())
       .then(resData => {
         if (resData.authenticated && resData.isAdmin) {
           setIsAdmin(true);
+          setActiveViewMode('studio');
           setSiteConfig(prev => ({ ...prev, is_admin: true, user_id: resData.user?.id || null }));
         } else {
           setIsAdmin(false);
+          setActiveViewMode('public');
         }
         setIsLoading(false);
       })
@@ -230,6 +242,7 @@ export function App() {
         .then(data => {
           if (data.ok) {
             setIsAdmin(true);
+            setActiveViewMode('studio');
             setSiteConfig(prev => ({ ...prev, is_admin: true, user_id: data.user_id }));
             setShowLoginModal(false);
             showToast('Авторизация выполнена! Доступны права администратора.');
@@ -506,69 +519,92 @@ export function App() {
         </div>
       )}
 
-      {/* Top Header Navigation */}
-      <header className="border-b border-[#2A2E35] bg-[#1A1D21] px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          {!isAdmin && (
+      {/* Top Header Navigation (Responsive for 360px viewports) */}
+      <header className="border-b border-[#2A2E35] bg-[#1A1D21] px-3 md:px-6 py-2.5 flex items-center justify-between sticky top-0 z-40 gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {activeViewMode === 'public' && (
             <button
               onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
-              className="md:hidden p-2 rounded-lg border border-[#2A2E35] bg-[#121417] text-slate-300"
+              className="md:hidden p-1.5 rounded-lg border border-[#2A2E35] bg-[#121417] text-slate-300 shrink-0"
             >
               <Menu className="w-4 h-4" />
             </button>
           )}
 
-          <img src="/api/logo" alt="Logo" className="w-8 h-8 rounded-lg border border-[#2A2E35] object-cover" />
-          <div>
-            <h1 className="font-extrabold text-sm tracking-wide text-white flex items-center gap-2">
-              {siteConfig.brand_name || siteConfig.site_name}
-              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#FF5500]/20 text-[#FF5500] border border-[#FF5500]/30">v2.0.0</span>
+          <img src="/api/logo" alt="Logo" className="w-7 h-8 md:w-8 md:h-8 rounded-lg border border-[#2A2E35] object-cover shrink-0" />
+          <div className="min-w-0 flex-1">
+            <h1 className="font-extrabold text-xs md:text-sm tracking-wide text-white flex items-center gap-1.5 truncate">
+              <span className="truncate">{siteConfig.brand_name || siteConfig.site_name}</span>
+              <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#FF5500]/20 text-[#FF5500] border border-[#FF5500]/30 shrink-0">v2.0</span>
             </h1>
-            <p className="text-[11px] text-slate-400">
-              {isAdmin ? 'Админ-Студия Базы Знаний' : 'База Знаний & Инструкции'}
+            <p className="text-[10px] md:text-[11px] text-slate-400 truncate">
+              {isAdmin && activeViewMode === 'studio' ? 'Редактор Базы Знаний' : 'База Знаний & Инструкции'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {isAdmin ? (
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Mode Switcher for Admins [ 🛠️ Редактор / 👁️ Читалка ] */}
+          {isAdmin && (
+            <button
+              onClick={() => setActiveViewMode(activeViewMode === 'studio' ? 'public' : 'studio')}
+              className="bg-[#2A2E35] hover:bg-slate-700 text-slate-200 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 border border-[#3A3F47]"
+              title="Переключить режим вида"
+            >
+              {activeViewMode === 'studio' ? (
+                <>
+                  <Eye className="w-3.5 h-3.5 text-[#FF5500]" />
+                  <span className="hidden sm:inline">Читалка</span>
+                </>
+              ) : (
+                <>
+                  <Wrench className="w-3.5 h-3.5 text-[#FF5500]" />
+                  <span className="hidden sm:inline">Редактор</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {isAdmin && activeViewMode === 'studio' ? (
             <>
-              <div className="hidden md:flex items-center gap-2 text-xs">
+              <div className="hidden lg:flex items-center gap-2 text-xs">
                 <span className={`w-2 h-2 rounded-full ${autoSaved ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'}`} />
                 <span className="text-slate-400 font-mono text-[11px]">
-                  {autoSaved ? 'Все изменения сохранены' : 'Есть несохраненные правки'}
+                  {autoSaved ? 'Сохранено' : 'Есть правки'}
                 </span>
               </div>
 
               <button
                 onClick={() => handleSaveGuide()}
-                className="bg-[#FF5500] hover:bg-[#E04B00] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5 shadow-lg shadow-[#FF5500]/20"
+                className="bg-[#FF5500] hover:bg-[#E04B00] text-white text-[11px] md:text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-lg shadow-[#FF5500]/20"
               >
                 <Save className="w-3.5 h-3.5" />
-                Опубликовать
+                <span className="hidden sm:inline">Опубликовать</span>
               </button>
             </>
           ) : (
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="bg-[#2A2E35] hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 border border-[#3A3F47]"
-            >
-              <Lock className="w-3.5 h-3.5 text-[#FF5500]" />
-              Вход
-            </button>
+            !isInsideTMA && (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="bg-[#2A2E35] hover:bg-slate-700 text-slate-200 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 border border-[#3A3F47]"
+              >
+                <Lock className="w-3.5 h-3.5 text-[#FF5500]" />
+                <span className="hidden sm:inline">Вход</span>
+              </button>
+            )
           )}
 
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg border border-[#2A2E35] hover:bg-slate-800 text-slate-400 transition-colors"
+            className="p-1.5 md:p-2 rounded-lg border border-[#2A2E35] hover:bg-slate-800 text-slate-400 transition-colors"
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
           </button>
         </div>
       </header>
 
-      {/* RENDER MODE A: ADMIN STUDIO (isAdmin === true) */}
-      {isAdmin ? (
+      {/* RENDER MODE A: ADMIN STUDIO (isAdmin === true && activeViewMode === 'studio') */}
+      {isAdmin && activeViewMode === 'studio' ? (
         <div className="flex-1 grid grid-cols-12 overflow-hidden">
           {/* COLUMN 1: Category Tree & Navigator (Left) */}
           <aside className="col-span-3 border-r border-[#2A2E35] bg-[#1A1D21] p-4 flex flex-col gap-4 overflow-y-auto">
@@ -861,7 +897,7 @@ export function App() {
 
                     <div
                       className="text-xs text-slate-300 leading-relaxed space-y-2 font-sans border-t border-[#2A2E35] pt-2"
-                      dangerouslySetInnerHTML={renderFormattedContent(guideContent)}
+                      dangerouslySetInnerHTML={renderCleanHtmlContent(guideContent)}
                     />
 
                     <div className="space-y-1.5 pt-3">
@@ -991,7 +1027,7 @@ export function App() {
           {/* Main Article Content Area */}
           <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-[#121417]">
             {selectedPublicGuide ? (
-              <div className="max-w-3xl mx-auto space-y-6">
+              <div className="max-w-3xl mx-auto space-y-6 pt-2">
                 {/* Category Breadcrumb */}
                 <div className="text-xs text-[#FF5500] font-semibold uppercase tracking-wider flex items-center gap-2">
                   <span>{selectedPublicCategory?.title || 'База знаний'}</span>
@@ -1012,10 +1048,13 @@ export function App() {
                   </div>
                 )}
 
-                {/* Rich Content Render (Clean HTML / Markdown Formatting) */}
+                {/* Clean Formatted Article Body with Tailwind Prose Typography */}
                 <div
-                  className="text-sm text-slate-200 leading-relaxed space-y-3 font-sans border-t border-[#2A2E35] pt-6"
-                  dangerouslySetInnerHTML={renderFormattedContent(selectedPublicGuide.content || selectedPublicGuide.text)}
+                  className="prose prose-invert max-w-none text-slate-300 text-sm leading-relaxed
+                             [&_p]:mb-3 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-slate-100 [&_h3]:mt-4 [&_h3]:mb-2
+                             [&_a]:text-[#FF5500] [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5
+                             [&_li]:mb-1 [&_strong]:text-white [&_em]:italic border-t border-[#2A2E35] pt-6"
+                  dangerouslySetInnerHTML={renderCleanHtmlContent(selectedPublicGuide.content || selectedPublicGuide.text)}
                 />
 
                 {/* Clean Interactive Action Buttons (NO Admin Row Markers) */}
