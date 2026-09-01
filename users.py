@@ -31,6 +31,36 @@ def _save_users(users: set[int]) -> None:
         pass
 
 
+DISCLAIMERS_FILE = os.path.join(DATA_DIR, "disclaimers.json")
+
+
+def has_accepted_disclaimer(user_id: int) -> bool:
+    """Проверяет, принял ли пользователь дисклеймер."""
+    try:
+        if not os.path.exists(DISCLAIMERS_FILE):
+            return False
+        with open(DISCLAIMERS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return user_id in data
+    except Exception:
+        return False
+
+
+def set_accepted_disclaimer(user_id: int) -> None:
+    """Отмечает, что пользователь принял дисклеймер."""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        accepted = set()
+        if os.path.exists(DISCLAIMERS_FILE):
+            with open(DISCLAIMERS_FILE, "r", encoding="utf-8") as f:
+                accepted = set(json.load(f))
+        accepted.add(user_id)
+        with open(DISCLAIMERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(sorted(accepted), f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
 def register_user(user_id: int) -> bool:
     """
     Регистрирует пользователя. Возвращает True, если пользователь НОВЫЙ

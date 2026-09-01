@@ -1,8 +1,23 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import MAIN_BOT_URL, get_extra_links
+from config import (
+    MAIN_BOT_URL,
+    WEB_APP_URL,
+    WEB_APP_BUTTON_TEXT,
+    ENABLE_MINI_APP,
+    DISCLAIMER_BUTTON_TEXT,
+    get_extra_links,
+)
 from guides import load_guides
+
+
+# ---------- Дисклеймер ----------
+def disclaimer_keyboard() -> InlineKeyboardMarkup:
+    """Кнопка подтверждения согласия с дисклеймером."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text=DISCLAIMER_BUTTON_TEXT, callback_data="accept_disclaimer")
+    return builder.as_markup()
 
 
 # ---------- Кнопки главного меню (категории) ----------
@@ -37,6 +52,15 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 
     if row_sizes:
         builder.adjust(*row_sizes)
+
+    # Если включен Mini App — добавляем кнопку вызова WebApp
+    if ENABLE_MINI_APP and WEB_APP_URL:
+        webapp_builder = InlineKeyboardBuilder()
+        webapp_builder.button(
+            text=WEB_APP_BUTTON_TEXT,
+            web_app=WebAppInfo(url=WEB_APP_URL)
+        )
+        builder.attach(webapp_builder)
 
     # Кнопку поиска добавляем отдельным рядом
     search_builder = InlineKeyboardBuilder()

@@ -39,8 +39,21 @@ def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_ID
 
 # ---------- Ссылки (опционально, настраиваются через .env) ----------
-# Основной бот — всегда нужен (если не задан, кнопка использует дефолтную ссылку)
 MAIN_BOT_URL = os.getenv("MAIN_BOT_URL", "https://t.me/redheadguy_bot")
+
+# ---------- Telegram Mini App & Web Panel ----------
+WEB_APP_URL = os.getenv("WEB_APP_URL", "https://redheadguide.redheadguy.ru")
+WEB_APP_BUTTON_TEXT = os.getenv("WEB_APP_BUTTON_TEXT", "🚀 Открыть базу знаний")
+ENABLE_MINI_APP = os.getenv("ENABLE_MINI_APP", "true").lower() in ("true", "1", "yes")
+
+# ---------- Onboarding & Disclaimer ----------
+ENABLE_DISCLAIMER = os.getenv("ENABLE_DISCLAIMER", "true").lower() in ("true", "1", "yes")
+DISCLAIMER_TEXT = os.getenv("DISCLAIMER_TEXT", "Добро пожаловать в RedheadGuy Guide Bot! Данный ресурс носит ознакомительный характер.")
+DISCLAIMER_BUTTON_TEXT = os.getenv("DISCLAIMER_BUTTON_TEXT", "✅ Принять и продолжить")
+
+# ---------- Custom Branding ----------
+BRAND_NAME = os.getenv("BRAND_NAME", "REDHEADGUY PRIVATE")
+DEFAULT_LOGO_PATH = os.getenv("DEFAULT_LOGO_PATH", "media/logo.png")
 
 # Дополнительные ссылки (если заданы в .env — выводим кнопки, если нет — пропускаем)
 CHANNEL_URL = os.getenv("CHANNEL_URL", "")   # канал новостей

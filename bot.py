@@ -18,10 +18,27 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from config import BOT_TOKEN, BOT_VERSION, BOT_NAME, ADMIN_ID
+from config import (
+    BOT_TOKEN,
+    BOT_VERSION,
+    BOT_NAME,
+    ADMIN_ID,
+    ENABLE_DISCLAIMER,
+    DISCLAIMER_TEXT,
+)
 from guides import load_guides, clean_html_for_telegram
-from keyboards import main_menu_keyboard, category_keyboard, guide_keyboard
-from users import register_user, count_users
+from keyboards import (
+    main_menu_keyboard,
+    category_keyboard,
+    guide_keyboard,
+    disclaimer_keyboard,
+)
+from users import (
+    register_user,
+    count_users,
+    has_accepted_disclaimer,
+    set_accepted_disclaimer,
+)
 from states import SearchStates
 import admin
 import logger as logger_setup  # настраивает логирование (консоль + файл)
@@ -85,7 +102,27 @@ async def cmd_start(message: Message):
             except Exception as e:
                 logger.warning("Не удалось уведомить админа %s о новом юзере: %s", admin_id, e)
 
+    # Проверка обязательного дисклеймера
+    if ENABLE_DISCLAIMER and not has_accepted_disclaimer(u.id):
+        await message.answer(
+            f"⚠️ <b>Внимание</b>\n\n{DISCLAIMER_TEXT}",
+            reply_markup=disclaimer_keyboard(),
+        )
+        return
+
     await message.answer(
+        WELCOME_TEXT,
+        reply_markup=main_menu_keyboard(),
+    )
+
+
+@dp.callback_query(F.data == "accept_disclaimer")
+async def process_accept_disclaimer(callback: CallbackQuery):
+    u = callback.from_user
+    set_accepted_disclaimer(u.id)
+    await callback.answer("Спасибо за подтверждение!")
+    await safe_edit(
+        callback.message,
         WELCOME_TEXT,
         reply_markup=main_menu_keyboard(),
     )

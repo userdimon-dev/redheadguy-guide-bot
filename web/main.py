@@ -14,6 +14,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, File
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
+from config import (
+    BRAND_NAME,
+    ENABLE_MINI_APP,
+    WEB_APP_URL,
+    WEB_APP_BUTTON_TEXT,
+    ENABLE_DISCLAIMER,
+    DISCLAIMER_TEXT,
+)
 from .config import SITE_NAME, BOT_USERNAME, is_admin
 from .auth import verify_telegram_auth, verify_telegram_webapp_init_data
 from .storage import load_guides, save_guides, backup_guides, count_stats
@@ -65,8 +73,24 @@ async def get_config(request: Request):
     return {
         "site_name": SITE_NAME,
         "bot_username": BOT_USERNAME,
+        "brand_name": BRAND_NAME,
         "is_admin": user is not None,
         "user_id": user,
+    }
+
+
+@app.get("/api/config/public")
+async def get_public_config():
+    """Публичные настройки брендинга и приложения"""
+    return {
+        "brand_name": BRAND_NAME,
+        "site_name": SITE_NAME,
+        "bot_username": BOT_USERNAME,
+        "enable_mini_app": ENABLE_MINI_APP,
+        "web_app_url": WEB_APP_URL,
+        "web_app_button_text": WEB_APP_BUTTON_TEXT,
+        "enable_disclaimer": ENABLE_DISCLAIMER,
+        "disclaimer_text": DISCLAIMER_TEXT,
     }
 
 
@@ -166,7 +190,11 @@ async def api_get_categories(request: Request):
 
 @app.get("/api/logo")
 async def get_brand_logo():
-    """Служебный роут для брендированного логотипа админки"""
+    """Служебный роут для брендированного логотипа админки. Отдаёт media/logo.png если создан, либо фолбэк SVG."""
+    logo_png = os.path.join(MEDIA_DIR, "logo.png")
+    if os.path.exists(logo_png):
+        return FileResponse(logo_png)
+
     svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
   <rect width="100" height="100" rx="20" fill="#1A1D21"/>
   <path d="M30 30 L70 30 L70 45 L48 45 L48 55 L65 55 L65 70 L30 70 Z" fill="#FF5500"/>

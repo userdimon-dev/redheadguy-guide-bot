@@ -80,9 +80,10 @@ declare global {
 }
 
 export function App() {
-  const [siteConfig, setSiteConfig] = useState<{ site_name: string; bot_username: string; is_admin: boolean; user_id: number | null }>({
+  const [siteConfig, setSiteConfig] = useState<{ site_name: string; bot_username: string; brand_name?: string; is_admin: boolean; user_id: number | null }>({
     site_name: 'RedheadGuy Admin Panel',
     bot_username: '',
+    brand_name: 'REDHEADGUY PRIVATE',
     is_admin: false,
     user_id: null
   });
@@ -397,10 +398,10 @@ export function App() {
       {/* Top Header Navigation */}
       <header className="border-b border-[#2A2E35] bg-[#1A1D21] px-6 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <img src="/api/logo" alt="Logo" className="w-8 h-8 rounded-lg border border-[#2A2E35]" />
+          <img src="/api/logo" alt="Logo" className="w-8 h-8 rounded-lg border border-[#2A2E35] object-cover" />
           <div>
             <h1 className="font-extrabold text-sm tracking-wide text-white flex items-center gap-2">
-              {siteConfig.site_name}
+              {siteConfig.brand_name || siteConfig.site_name}
               <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#FF5500]/20 text-[#FF5500] border border-[#FF5500]/30">v1.5.1</span>
             </h1>
             <p className="text-[11px] text-slate-400">Редактор база знаний & Inline-клавиатур</p>

@@ -55,6 +55,7 @@ def admin_menu_keyboard():
     b = InlineKeyboardBuilder()
     b.button(text="➕ Добавить категорию", callback_data="admin:add_category")
     b.button(text="➕ Добавить гайд", callback_data="admin:add_guide")
+    b.button(text="🖼️ Обновить логотип бренда", callback_data="admin:change_logo")
     b.button(text="📂 Категории и гайды", callback_data="admin:list")
     b.button(text="✏️ Управление гайдами", callback_data="admin:manage")
     b.button(text="🗑️ Удалить категорию", callback_data="admin:del_cat")
@@ -142,6 +143,37 @@ async def admin_start(message: Message):
     await message.answer(
         "🔐 <b>Админ-панель RedheadGuy</b>\n\n"
         "Управление контентом гайдов:",
+        reply_markup=admin_menu_keyboard(),
+    )
+
+
+# ---------- Загрузка/изменение логотипа бренда ----------
+@router.callback_query(F.data == "admin:change_logo")
+async def change_logo_start(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    await state.set_state(AddGuideStates.ask_photo)
+    await safe_edit(
+        callback.message,
+        "🖼️ Отправьте **изображение** (PNG/JPG) для нового логотипа бренда.",
+    )
+    await callback.answer()
+
+
+@router.message(AddGuideStates.ask_photo, F.photo)
+async def process_logo_upload(message: Message, state: FSMContext, bot):
+    if not is_admin(message.from_user.id):
+        return
+
+    logo_path = os.path.join(MEDIA_DIR, "logo.png")
+    photo = message.photo[-1]
+    await bot.download(photo.file_id, destination=logo_path)
+
+    await state.clear()
+    await message.answer(
+        "✅ **Логотип бренда успешно обновлен!**",
         reply_markup=admin_menu_keyboard(),
     )
 

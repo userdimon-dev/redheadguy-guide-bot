@@ -48,6 +48,8 @@ def test_search_guides(monkeypatch):
 
 
 def test_keyboards_grid_and_hidden(monkeypatch):
+    import keyboards
+    monkeypatch.setattr(keyboards, "ENABLE_MINI_APP", False)
     sample_guides = {
         "cat1": {
             "title": "Cat 1",
