@@ -164,6 +164,17 @@ async def api_get_categories(request: Request):
     return {"categories": result}
 
 
+@app.get("/api/logo")
+async def get_brand_logo():
+    """Служебный роут для брендированного логотипа админки"""
+    svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <rect width="100" height="100" rx="20" fill="#1A1D21"/>
+  <path d="M30 30 L70 30 L70 45 L48 45 L48 55 L65 55 L65 70 L30 70 Z" fill="#FF5500"/>
+  <circle cx="75" cy="25" r="6" fill="#00E5FF"/>
+</svg>"""
+    return Response(content=svg_content, media_type="image/svg+xml")
+
+
 @app.get("/api/category/{category_id}")
 async def api_get_category(request: Request, category_id: str):
     user = _get_session_user(request)
@@ -184,7 +195,12 @@ async def api_get_category(request: Request, category_id: str):
         indexed_guides.append({
             "orig_idx": idx,
             "title": g.get("title", ""),
+            "slug": g.get("slug") or f"guide-{idx}",
+            "summary": g.get("summary") or g.get("title", ""),
             "text": g.get("text", ""),
+            "content": g.get("content") or g.get("text", ""),
+            "tags": g.get("tags") or [],
+            "buttons": g.get("buttons") or [],
             "url": g.get("url"),
             "url_label": g.get("url_label"),
             "show_bot_links": g.get("show_bot_links", False),
@@ -319,9 +335,37 @@ async def api_save_guide(
     if category_id not in guides:
         return JSONResponse({"error": "Category not found"}, status_code=404)
 
+    # Извлечение JSON данных для расширенных полей (summary, tags, buttons)
+    form_data = await request.form()
+    slug = str(form_data.get("slug", "")).strip()
+    summary = str(form_data.get("summary", "")).strip()
+    content = str(form_data.get("content", text)).strip()
+
+    import json
+    tags_raw = form_data.get("tags")
+    tags = []
+    if tags_raw:
+        try:
+            tags = json.loads(str(tags_raw))
+        except Exception:
+            pass
+
+    buttons_raw = form_data.get("buttons")
+    buttons = []
+    if buttons_raw:
+        try:
+            buttons = json.loads(str(buttons_raw))
+        except Exception:
+            pass
+
     new_guide = {
         "title": title.strip(),
+        "slug": slug or title.strip().lower().replace(" ", "-"),
+        "summary": summary or title.strip(),
         "text": text,
+        "content": content or text,
+        "tags": tags,
+        "buttons": buttons,
         "is_hidden": is_hidden,
         "sort_order": sort_order,
         "row_number": row_number,
